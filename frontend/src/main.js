@@ -8,7 +8,8 @@ import Home from "./views/Home.vue";
 const app = createApp(App);
 
 // Setup Pinia for state management
-app.use(createPinia());
+const pinia = createPinia();
+app.use(pinia);
 
 // Setup Vue Router
 const router = createRouter({
