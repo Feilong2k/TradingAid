@@ -2,6 +2,7 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import { createRouter, createWebHistory } from "vue-router";
 import App from "./App.vue";
+import Home from "./views/Home.vue";
 
 // Create Vue app
 const app = createApp(App);
@@ -12,9 +13,7 @@ app.use(createPinia());
 // Setup Vue Router
 const router = createRouter({
   history: createWebHistory(),
-  routes: [
-    { path: "/", component: { template: "<div>Welcome to Trading Aid!</div>" } }
-  ]
+  routes: [{ path: "/", component: Home }],
 });
 app.use(router);
 
