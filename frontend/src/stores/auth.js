@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import { useRouter } from "vue-router";
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
@@ -9,6 +10,7 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('auth_token'));
   const isLoading = ref(false);
   const lastActivity = ref(Date.now());
+  const router = useRouter();
 
   const isAuthenticated = computed(() => {
     return !!token.value && !!user.value;
@@ -128,13 +130,22 @@ export const useAuthStore = defineStore('auth', () => {
       // Clear local state regardless of API call success
       user.value = null;
       token.value = null;
-      localStorage.removeItem('auth_token');
-      
+      localStorage.removeItem("auth_token");
+
       // Remove activity listeners
-      const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-      activityEvents.forEach(event => {
+      const activityEvents = [
+        "mousedown",
+        "mousemove",
+        "keypress",
+        "scroll",
+        "touchstart",
+      ];
+      activityEvents.forEach((event) => {
         document.removeEventListener(event, updateActivity, true);
       });
+
+      // Redirect to home page
+      router.push("/");
     }
   };
 
@@ -148,6 +159,7 @@ export const useAuthStore = defineStore('auth', () => {
     handleOAuthCallback,
     validateSession,
     logout,
-    updateActivity
+    updateActivity,
+    startActivityTracking,
   };
 });

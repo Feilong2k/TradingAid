@@ -6,11 +6,8 @@
     </header>
     
     <main class="main-content">
-      <!-- User Profile Section -->
-      <UserProfile v-if="authStore.isAuthenticated" />
-
       <!-- Login Section -->
-      <div v-else class="auth-section">
+      <div class="auth-section">
         <Login />
       </div>
     </main>
@@ -19,11 +16,11 @@
 
 <script setup>
 import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import Login from '../components/Login.vue'
-import UserProfile from '../components/UserProfile.vue'
-
 const authStore = useAuthStore()
+const router = useRouter()
 
 // Handle OAuth callback if URL contains code parameter
 const handleOAuthCallback = async () => {
@@ -35,6 +32,8 @@ const handleOAuthCallback = async () => {
       await authStore.handleOAuthCallback(code);
       // Remove code from URL
       window.history.replaceState({}, document.title, window.location.pathname);
+      // Redirect to dashboard
+      router.push('/dashboard');
   } catch (error) {
       console.error('OAuth callback failed:', error);
     }
@@ -44,6 +43,11 @@ const handleOAuthCallback = async () => {
 onMounted(async () => {
   // Initialize auth store
   await authStore.initializeAuth();
+
+  // If already authenticated, redirect to dashboard
+  if (authStore.isAuthenticated) {
+    router.push('/dashboard');
+  }
 
   // Handle OAuth callback if present
   await handleOAuthCallback();

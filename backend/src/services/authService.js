@@ -23,14 +23,16 @@ export class AuthService {
   }
 
   static async findOrCreateUser(profile) {
+    console.log("Google profile received:", profile);
+    
     let user = await User.findOne({ googleId: profile.id });
     
     if (!user) {
       user = new User({
         googleId: profile.id,
-        email: profile.emails[0].value,
-        name: profile.displayName,
-        picture: profile.photos[0].value
+        email: profile.email,
+        name: profile.name,
+        picture: profile.picture,
       });
       await user.save();
     }

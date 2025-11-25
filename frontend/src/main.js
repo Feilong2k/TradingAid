@@ -3,6 +3,8 @@ import { createPinia } from "pinia";
 import { createRouter, createWebHistory } from "vue-router";
 import App from "./App.vue";
 import Home from "./views/Home.vue";
+import Dashboard from "./views/Dashboard.vue";
+import AuthSuccess from "./views/AuthSuccess.vue";
 
 // Create Vue app
 const app = createApp(App);
@@ -14,7 +16,11 @@ app.use(pinia);
 // Setup Vue Router
 const router = createRouter({
   history: createWebHistory(),
-  routes: [{ path: "/", component: Home }],
+  routes: [
+    { path: "/", component: Home },
+    { path: "/dashboard", component: Dashboard },
+    { path: "/auth-success", component: AuthSuccess },
+  ],
 });
 app.use(router);
 

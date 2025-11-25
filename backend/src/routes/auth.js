@@ -17,35 +17,46 @@ router.get('/google/callback', async (req, res) => {
     const { code } = req.query;
 
     if (!code) {
-      return res.status(400).json({ error: 'Authorization code required' });
+      return res.status(400).json({ error: "Authorization code required" });
     }
+
+    console.log("Received OAuth code:", code);
 
     // Exchange code for tokens
     const tokens = await GoogleOAuth.getTokens(code);
-    
+    console.log("Received tokens from Google");
+
     // Get user profile
     const profile = await GoogleOAuth.getUserProfile(tokens.access_token);
-    
+    console.log("Google profile data:", profile);
+
     // Find or create user
     const user = await AuthService.findOrCreateUser(profile);
-    
+
     // Generate JWT token
     const token = AuthService.generateToken(user);
 
-    res.json({
-      success: true,
-      token,
-      user: {
+    // Redirect to frontend with token as URL parameter
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const redirectUrl = `${frontendUrl}/auth-success?token=${encodeURIComponent(
+      token
+    )}&user=${encodeURIComponent(
+      JSON.stringify({
         id: user._id,
         name: user.name,
         email: user.email,
-        picture: user.picture
-      }
-    });
+        picture: user.picture,
+      })
+    )}`;
 
+    res.redirect(redirectUrl);
   } catch (error) {
-    console.error('Google OAuth error:', error);
-    res.status(500).json({ error: 'Authentication failed' });
+    console.error("Google OAuth error details:", error);
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const errorRedirectUrl = `${frontendUrl}/auth-error?error=${encodeURIComponent(
+      error.message
+    )}`;
+    res.redirect(errorRedirectUrl);
   }
 });
 
