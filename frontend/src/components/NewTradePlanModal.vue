@@ -522,7 +522,13 @@
       }, 500);
       
     } catch (error) {
-      console.error('Error proceeding to emotional check:', error);
+      console.error('Error proceeding to emotional check:', {
+        status: error?.response?.status,
+        data: error?.response?.data,
+        message: error?.message,
+        url: error?.config?.url,
+        payload: error?.config?.data
+      });
       alert('Failed to create trade plan. Please try again.');
     } finally {
       isLoading.value = false;
@@ -685,7 +691,11 @@
       
       // Fallback to default values if API fails
       availableAssets.value = ['BTC', 'NQ', 'GBPUSD', 'USDJPY', 'GOLD', 'JP225'];
-      timeframes.value = ['M15', 'M5', 'M1', 'H1', 'M3', 'H4'];
+      timeframes.value = [
+        { label: 'M15, M5, M1', timeframes: ['M15', 'M5', 'M1'], description: 'Short-term analysis set' },
+        { label: 'H1, M15, M5', timeframes: ['H1', 'M15', 'M5'], description: 'Medium-term analysis set' },
+        { label: 'H4, H1, M15', timeframes: ['H4', 'H1', 'M15'], description: 'Long-term analysis set' }
+      ];
       emotionalStates.value = [
         { value: 'calm', label: 'Calm', type: 'positive', icon: '😌' },
         { value: 'focused', label: 'Focused', type: 'positive', icon: '🎯' },
