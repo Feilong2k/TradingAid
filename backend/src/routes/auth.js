@@ -38,20 +38,25 @@ router.get("/google/callback", validateQuery(oauthCallbackSchema), async (req, r
     // Generate JWT token
     const token = AuthService.generateToken(user);
 
-    // Return JSON response instead of redirecting
-    res.json({
-      success: true,
-      token: token,
-      user: {
+    // Redirect to frontend with token and user data
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const redirectUrl = `${frontendUrl}/auth-success?token=${encodeURIComponent(
+      token
+    )}&user=${encodeURIComponent(
+      JSON.stringify({
         id: user._id,
         name: user.name,
         email: user.email,
         picture: user.picture,
-      }
-    });
+      })
+    )}`;
+
+    console.log("Redirecting to frontend with authentication success");
+    res.redirect(redirectUrl);
   } catch (error) {
     console.error("Google OAuth error:", error.message);
-    
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
     // Provide more user-friendly error messages
     let errorMessage = "Authentication failed. Please try again.";
     if (
@@ -61,10 +66,10 @@ router.get("/google/callback", validateQuery(oauthCallbackSchema), async (req, r
       errorMessage = "Database connection issue. Please try again in a moment.";
     }
 
-    res.status(500).json({ 
-      success: false,
-      error: errorMessage 
-    });
+    const errorRedirectUrl = `${frontendUrl}/auth-error?error=${encodeURIComponent(
+      errorMessage
+    )}`;
+    res.redirect(errorRedirectUrl);
   }
 });
 
