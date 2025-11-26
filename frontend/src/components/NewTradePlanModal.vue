@@ -14,14 +14,33 @@
             
             <div class="form-group">
               <label>Asset</label>
-              <div class="asset-selector">
-                <select v-model="tradeSetup.asset" class="form-select">
-                  <option value="">Select Asset</option>
-                  <option v-for="asset in availableAssets" :key="asset" :value="asset">
-                    {{ asset }}
-                  </option>
-                </select>
+              <div class="asset-autocomplete">
+                <div class="autocomplete-container">
+                  <input 
+                    type="text"
+                    v-model="assetSearch"
+                    @input="filterAssets"
+                    @focus="showAssetSuggestions = true"
+                    @blur="hideSuggestions"
+                    placeholder="Type to search assets..."
+                    class="form-input autocomplete-input"
+                  />
+                  <div v-if="showAssetSuggestions && filteredAssets.length > 0" class="autocomplete-suggestions">
+                    <div 
+                      v-for="asset in filteredAssets" 
+                      :key="asset"
+                      class="suggestion-item"
+                      @mousedown="selectAsset(asset)"
+                      :class="{ highlighted: highlightedAssetIndex === filteredAssets.indexOf(asset) }"
+                    >
+                      {{ asset }}
+                    </div>
+                  </div>
+                </div>
                 <button class="add-asset-btn" @click="showAddAsset = true">+ Add</button>
+              </div>
+              <div v-if="tradeSetup.asset" class="selected-asset">
+                <small>Selected: <strong>{{ tradeSetup.asset }}</strong></small>
               </div>
             </div>
   
@@ -219,7 +238,13 @@
   const timeframes = ref([]);
   const emotionalStates = ref([]);
   const bodySignals = ref([]);
-  
+
+  // Autocomplete functionality
+  const assetSearch = ref('');
+  const filteredAssets = ref([]);
+  const showAssetSuggestions = ref(false);
+  const highlightedAssetIndex = ref(-1);
+
   const tradeSetup = ref({
     asset: '',
     direction: '',
@@ -383,6 +408,32 @@
     } catch (error) {
       console.error('Error updating decision:', error);
     }
+  };
+
+  // Autocomplete methods
+  const filterAssets = () => {
+    if (!assetSearch.value) {
+      filteredAssets.value = availableAssets.value;
+    } else {
+      const searchTerm = assetSearch.value.toLowerCase();
+      filteredAssets.value = availableAssets.value.filter(asset => 
+        asset.toLowerCase().includes(searchTerm)
+      );
+    }
+    highlightedAssetIndex.value = -1;
+  };
+
+  const selectAsset = (asset) => {
+    tradeSetup.value.asset = asset;
+    assetSearch.value = asset;
+    showAssetSuggestions.value = false;
+  };
+
+  const hideSuggestions = () => {
+    // Use setTimeout to allow click event to fire before hiding
+    setTimeout(() => {
+      showAssetSuggestions.value = false;
+    }, 200);
   };
   
   // Load configurations from API
@@ -562,11 +613,57 @@
     width: 200px;
   }
   
-  .asset-selector {
+  .asset-autocomplete {
     display: flex;
     gap: 0.5rem;
   }
-  
+
+  .autocomplete-container {
+    position: relative;
+    flex: 1;
+  }
+
+  .autocomplete-input {
+    position: relative;
+    z-index: 1;
+  }
+
+  .autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #e9ecef;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 10;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .suggestion-item {
+    padding: 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.2s ease;
+  }
+
+  .suggestion-item:hover,
+  .suggestion-item.highlighted {
+    background-color: #f8f9fa;
+  }
+
+  .suggestion-item:last-child {
+    border-bottom: none;
+  }
+
+  .selected-asset {
+    margin-top: 0.5rem;
+    color: #28a745;
+  }
+
   .add-asset-btn {
     background: #f8f9fa;
     border: 2px solid #e9ecef;
