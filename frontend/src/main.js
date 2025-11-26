@@ -5,6 +5,7 @@ import App from "./App.vue";
 import Home from "./views/Home.vue";
 import Dashboard from "./views/Dashboard.vue";
 import AuthSuccess from "./views/AuthSuccess.vue";
+import AuthError from "./views/AuthError.vue";
 
 // Create Vue app
 const app = createApp(App);
@@ -20,6 +21,7 @@ const router = createRouter({
     { path: "/", component: Home },
     { path: "/dashboard", component: Dashboard },
     { path: "/auth-success", component: AuthSuccess },
+    { path: "/auth-error", component: AuthError },
   ],
 });
 app.use(router);

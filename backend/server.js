@@ -27,10 +27,29 @@ app.use(cors(corsOptions));
 // Middleware
 app.use(express.json());
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/tradingapp")
-  .then(() => console.log("Connected to MongoDB"))
-  .catch(err => console.error("MongoDB connection error:", err));
+// MongoDB connection with robust configuration
+const mongooseOptions = {
+  serverSelectionTimeoutMS: 30000, // 30 seconds
+  socketTimeoutMS: 45000, // 45 seconds
+  bufferCommands: false,
+  bufferMaxEntries: 0,
+  maxPoolSize: 10,
+  retryWrites: true,
+  w: 'majority'
+};
+
+const connectWithRetry = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/tradingapp", mongooseOptions);
+    console.log("✅ Connected to MongoDB successfully");
+  } catch (error) {
+    console.error("❌ MongoDB connection failed:", error.message);
+    console.log("Retrying connection in 5 seconds...");
+    setTimeout(connectWithRetry, 5000);
+  }
+};
+
+connectWithRetry();
 
 // Routes
 app.use('/auth', authRoutes);
@@ -40,13 +59,17 @@ app.get("/", (req, res) => {
   res.json({ message: "Trading API is running!" });
 });
 
-// Protected route example
-app.get("/profile", async (req, res) => {
-  // This would use the authenticateToken middleware in a real implementation
-  res.json({ message: "This is a protected route" });
+// Health check route
+app.get("/health", (req, res) => {
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  res.json({ 
+    status: 'ok', 
+    database: dbStatus,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });

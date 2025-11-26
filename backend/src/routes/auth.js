@@ -6,13 +6,18 @@ import { authenticateToken } from '../middleware/auth.js';
 const router = express.Router();
 
 // Initiate Google OAuth
-router.get('/google', (req, res) => {
-  const authUrl = GoogleOAuth.getAuthUrl();
-  res.json({ authUrl });
+router.get("/google", (req, res) => {
+  try {
+    const authUrl = GoogleOAuth.getAuthUrl();
+    res.json({ authUrl });
+  } catch (error) {
+    console.error("Error generating auth URL:", error);
+    res.status(500).json({ error: "Failed to generate authentication URL" });
+  }
 });
 
 // Google OAuth callback
-router.get('/google/callback', async (req, res) => {
+router.get("/google/callback", async (req, res) => {
   try {
     const { code } = req.query;
 
@@ -20,7 +25,7 @@ router.get('/google/callback', async (req, res) => {
       return res.status(400).json({ error: "Authorization code required" });
     }
 
-    console.log("Received OAuth code:", code);
+    console.log("Received OAuth code");
 
     // Exchange code for tokens
     const tokens = await GoogleOAuth.getTokens(code);
@@ -28,7 +33,7 @@ router.get('/google/callback', async (req, res) => {
 
     // Get user profile
     const profile = await GoogleOAuth.getUserProfile(tokens.access_token);
-    console.log("Google profile data:", profile);
+    console.log("Google profile data received");
 
     // Find or create user
     const user = await AuthService.findOrCreateUser(profile);
@@ -49,12 +54,23 @@ router.get('/google/callback', async (req, res) => {
       })
     )}`;
 
+    console.log("Redirecting to frontend with authentication success");
     res.redirect(redirectUrl);
   } catch (error) {
-    console.error("Google OAuth error details:", error);
+    console.error("Google OAuth error:", error.message);
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+    // Provide more user-friendly error messages
+    let errorMessage = "Authentication failed. Please try again.";
+    if (
+      error.message.includes("MongoDB") ||
+      error.message.includes("timed out")
+    ) {
+      errorMessage = "Database connection issue. Please try again in a moment.";
+    }
+
     const errorRedirectUrl = `${frontendUrl}/auth-error?error=${encodeURIComponent(
-      error.message
+      errorMessage
     )}`;
     res.redirect(errorRedirectUrl);
   }
@@ -74,10 +90,8 @@ router.get('/validate', authenticateToken, (req, res) => {
 });
 
 // Logout (client-side token removal)
-router.post('/logout', authenticateToken, async (req, res) => {
-  // In a real implementation, you might want to blacklist the token
-  // For now, we'll just return success and let the client remove the token
-  res.json({ success: true, message: 'Logged out successfully' });
+router.post("/logout", authenticateToken, async (req, res) => {
+  res.json({ success: true, message: "Logged out successfully" });
 });
 
 export default router;
