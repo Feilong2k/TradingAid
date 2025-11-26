@@ -161,6 +161,39 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 
 ## Recent Changes & Improvements
 
+### Asset Management & UI Enhancements (November 26, 2025)
+
+#### 1. Autocomplete Asset Selection
+- **Feature**: Replaced dropdown with typeahead autocomplete component
+- **Functionality**: Users can type and select from suggestions that pop up
+- **Real-time Filtering**: Instantly filters assets as user types
+- **User Experience**: 
+  - Clean dropdown suggestions with hover effects
+  - Shows selected asset below input field
+  - Maintains "Add Asset" button for new assets
+  - Responsive design for mobile devices
+
+**Technical Implementation:**
+- **Frontend**: Custom Vue.js autocomplete component in `NewTradePlanModal.vue`
+- **Reactive Data**: Asset search, filtered assets, suggestion visibility
+- **Methods**: `filterAssets()`, `selectAsset()`, `hideSuggestions()`
+- **Styling**: Professional dropdown with shadows and hover effects
+
+#### 2. Emotions Reset Endpoint
+- **Feature**: REST API endpoint to restore original emotions configuration
+- **Security**: Requires JWT authentication
+- **Preservation**: All other configurations (assets, timeframes, body_signals) remain unchanged
+- **Endpoint**: `POST /api/config/reset/emotions`
+
+**Original Emotions Restored:**
+- **3 Positive Emotions**: Calm, Focused, Confident
+- **12 Negative Emotions**: Anxious, Rushed, Fearful, Hopeful, Excited, Greedy, Irritated, Frustrated, Angry, Disappointed, Regretful, Ashamed
+
+**Technical Implementation:**
+- **Backend Route**: Added to `backend/src/routes/configurations.js`
+- **Database**: MongoDB atomic update operation
+- **Error Handling**: Comprehensive logging and error responses
+
 ### Dynamic Configuration System (November 26, 2025)
 - **Added Configuration Model**: Centralized configuration management in MongoDB
 - **Timeframe Collections**: Implemented multi-timeframe analysis sets instead of individual timeframes
@@ -168,7 +201,7 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 - **Public Configuration API**: Created `/api/config` endpoint for frontend configuration loading
 
 **Configuration Types:**
-- **Assets**: 6 predefined trading instruments (BTC, NQ, GBPUSD, USDJPY, GOLD, JP225)
+- **Assets**: 6 predefined trading instruments (BTC, NQ, GBPUSD, USDJPY, GOLD, JP225) with dynamic addition capability
 - **Timeframe Collections**: 
   - M15, M5, M1 (Short-term analysis)
   - H1, M15, M5 (Medium-term analysis) 
