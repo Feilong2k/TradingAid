@@ -128,6 +128,56 @@ router.post("/assets", authenticateToken, async (req, res) => {
 });
 
 
+// Reset emotions configuration to original seed data
+router.post("/reset/emotions", authenticateToken, async (req, res) => {
+  try {
+    console.log("🔄 Resetting emotions configuration to original seed data...");
+
+    const originalEmotions = [
+      { value: 'calm', label: 'Calm', type: 'positive' },
+      { value: 'focused', label: 'Focused', type: 'positive' },
+      { value: 'confident', label: 'Confident', type: 'positive' },
+      { value: 'anxious', label: 'Anxious', type: 'negative' },
+      { value: 'rushed', label: 'Rushed', type: 'negative' },
+      { value: 'fearful', label: 'Fearful', type: 'negative' },
+      { value: 'hopeful', label: 'Hopeful', type: 'negative' },
+      { value: 'excited', label: 'Excited', type: 'negative' },
+      { value: 'greedy', label: 'Greedy', type: 'negative' },
+      { value: 'irritated', label: 'Irritated', type: 'negative' },
+      { value: 'frustrated', label: 'Frustrated', type: 'negative' },
+      { value: 'angry', label: 'Angry', type: 'negative' },
+      { value: 'disappointed', label: 'Disappointed', type: 'negative' },
+      { value: 'regretful', label: 'Regretful', type: 'negative' },
+      { value: 'ashamed', label: 'Ashamed', type: 'negative' }
+    ];
+
+    // Update the emotions configuration
+    const emotionsConfig = await Configuration.findOneAndUpdate(
+      { configType: "emotions", isActive: true },
+      { 
+        configData: originalEmotions,
+        updatedAt: new Date()
+      },
+      { new: true, upsert: true }
+    );
+
+    console.log("✅ Emotions configuration reset successfully");
+    console.log(`📊 Reset emotions to ${originalEmotions.length} items`);
+
+    res.json({
+      success: true,
+      message: "Emotions configuration reset to original seed data",
+      emotions: emotionsConfig.configData
+    });
+  } catch (error) {
+    console.error("❌ Error resetting emotions configuration:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to reset emotions configuration: " + error.message
+    });
+  }
+});
+
 // Update configuration (admin only - for future use)
 router.put('/:type', authenticateToken, async (req, res) => {
   try {
