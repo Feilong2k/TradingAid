@@ -130,9 +130,16 @@ router.post("/assets", authenticateToken, async (req, res) => {
 // Test route for MongoDB save operations (temporary - no authentication)
 router.get("/test/save", async (req, res) => {
   try {
-    console.log("🧪 Testing MongoDB save operation...");
+    console.log("🧪 Testing MongoDB save operations...");
 
-    // Find the assets configuration and add a test asset
+    // Test 1: Check current configurations
+    const configurations = await Configuration.find({ isActive: true });
+    console.log(`📊 Found ${configurations.length} configurations:`);
+    configurations.forEach(config => {
+      console.log(`   - ${config.configType}: ${Array.isArray(config.configData) ? config.configData.length + ' items' : 'data loaded'}`);
+    });
+
+    // Test 2: Try to add a test asset to assets
     const assetsConfig = await Configuration.findOne({
       configType: "assets",
       isActive: true,
@@ -182,7 +189,11 @@ router.get("/test/save", async (req, res) => {
 
     res.json({
       success: true,
-      message: "Test asset added successfully",
+      message: "Test save successful - asset added to existing assets config",
+      currentConfigurations: configurations.map(config => ({
+        type: config.configType,
+        count: Array.isArray(config.configData) ? config.configData.length : 'N/A'
+      })),
       assets: savedConfig.configData,
     });
   } catch (error) {
