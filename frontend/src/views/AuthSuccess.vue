@@ -4,17 +4,19 @@
       <div class="spinner"></div>
       <h2>Completing Login...</h2>
       <p>Please wait while we set up your session</p>
+      <p v-if="debugInfo" class="debug-info">{{ debugInfo }}</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth.js';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const debugInfo = ref('');
 
 onMounted(async () => {
   try {
@@ -22,7 +24,11 @@ onMounted(async () => {
     const token = urlParams.get('token');
     const userData = urlParams.get('user');
 
+    debugInfo.value = `Token: ${token ? 'Present' : 'Missing'}, User: ${userData ? 'Present' : 'Missing'}`;
+
     if (token && userData) {
+      console.log('Storing token and user data...');
+
       // Store the token
       authStore.token = token;
       localStorage.setItem('auth_token', token);
@@ -30,9 +36,15 @@ onMounted(async () => {
       // Parse and store user data
       authStore.user = JSON.parse(userData);
       
+      console.log('Token stored, starting activity tracking...');
+
       // Start activity tracking
-      authStore.startActivityTracking();
+      if (authStore.startActivityTracking) {
+        authStore.startActivityTracking();
+      }
       
+      console.log('Redirecting to dashboard...');
+
       // Redirect to dashboard
       router.push('/dashboard');
     } else {
@@ -40,6 +52,7 @@ onMounted(async () => {
     }
   } catch (error) {
     console.error('Auth success handling failed:', error);
+    debugInfo.value = `Error: ${error.message}`;
     router.push('/?error=auth_failed');
   }
 });
@@ -88,5 +101,14 @@ onMounted(async () => {
 .loading-container p {
   color: #6c757d;
   margin: 0;
+}
+
+.debug-info {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: #6c757d;
+  background: #f8f9fa;
+  padding: 0.5rem;
+  border-radius: 4px;
 }
 </style>
