@@ -125,6 +125,15 @@ router.post('/:id/analyze-emotions', authenticateToken, async (req, res) => {
         tradePlan,
         todayTrades || []
       );
+      
+      // Save initial AI message to conversation
+      tradePlan.conversation.push({
+        role: 'assistant',
+        content: aiAnalysis,
+        timestamp: new Date()
+      });
+      await tradePlan.save();
+      
       return res.json({ aiAnalysis });
     }
     
@@ -141,6 +150,52 @@ router.post('/:id/analyze-emotions', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error analyzing emotions:', error);
     res.status(500).json({ error: 'Failed to analyze emotional state' });
+  }
+});
+
+// Chat with Aria for emotional check
+router.post('/:id/chat', authenticateToken, async (req, res) => {
+  try {
+    const { message, emotionalState } = req.body;
+    
+    // Get the trade plan
+    const tradePlan = await TradePlan.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+    
+    if (!tradePlan) {
+      return res.status(404).json({ error: 'Trade plan not found' });
+    }
+    
+    // Save user message to conversation
+    tradePlan.conversation.push({
+      role: 'user',
+      content: message,
+      timestamp: new Date()
+    });
+    
+    // Get AI response based on current emotional state and conversation context
+    const aiResponse = await aiService.analyzeChatMessage(
+      req.user._id.toString(),
+      message,
+      emotionalState,
+      tradePlan.conversation
+    );
+    
+    // Save AI response to conversation
+    tradePlan.conversation.push({
+      role: 'assistant',
+      content: aiResponse,
+      timestamp: new Date()
+    });
+    
+    await tradePlan.save();
+    
+    res.json({ aiResponse });
+  } catch (error) {
+    console.error('Error in chat:', error);
+    res.status(500).json({ error: 'Failed to process chat message' });
   }
 });
 

@@ -20,7 +20,8 @@
                     type="text"
                     v-model="assetSearch"
                     @input="filterAssets"
-                    @focus="showAssetSuggestions = true"
+                    @focus="handleAssetInputFocus"
+                    @keydown="handleAssetKeydown"
                     @blur="hideSuggestions"
                     placeholder="Type to search assets..."
                     class="form-input autocomplete-input"
@@ -43,7 +44,7 @@
                 <small>Selected: <strong>{{ tradeSetup.asset }}</strong></small>
               </div>
             </div>
-  
+
             <div class="form-group">
               <label>Direction</label>
               <div class="direction-buttons">
@@ -63,7 +64,7 @@
                 </button>
               </div>
             </div>
-  
+
             <div class="form-group">
               <label>Timeframe Collection</label>
               <select v-model="tradeSetup.timeframe" class="form-select">
@@ -76,7 +77,7 @@
                 <small>Selected timeframes: {{ getSelectedTimeframes(tradeSetup.timeframe) }}</small>
               </div>
             </div>
-  
+
             <div class="modal-actions">
               <button class="btn-secondary" @click="closeModal">Cancel</button>
               <button 
@@ -89,110 +90,164 @@
             </div>
           </div>
         </div>
-  
-        <!-- Step 2: Emotional Check -->
+
+        <!-- Step 2: Emotional Check - Chat Style -->
         <div v-if="currentStep === 2" class="step-container">
           <div class="modal-header">
-            <h2>Emotional Check</h2>
+            <h2>Emotional Check with Aria</h2>
             <div class="step-indicator">Step 2 of 3</div>
           </div>
           
-          <div class="step-content">
-            <div class="ai-analysis" v-if="aiAnalysis">
-              <div class="ai-header">
-                <span class="ai-icon">👩‍💼</span>
-                <h4>Aria's Analysis</h4>
-              </div>
-              <div class="ai-content">
-                <p>{{ aiAnalysis }}</p>
-              </div>
-            </div>
-  
-            <h3>How are you feeling right now?</h3>
-            <p class="step-description">Select your current emotional state</p>
-            
-            <div class="emotional-states">
-              <div 
-                v-for="emotion in emotionalStates" 
-                :key="emotion.value"
-                class="emotion-card"
-                :class="{ 
-                  positive: emotion.type === 'positive', 
-                  negative: emotion.type === 'negative',
-                  selected: emotionalState.state === emotion.value 
-                }"
-                @click="selectEmotion(emotion)"
-              >
-                <span class="emotion-icon">{{ emotion.icon }}</span>
-                <span class="emotion-label">{{ emotion.label }}</span>
-              </div>
-            </div>
-  
-            <!-- Body Signals (only for negative emotions) -->
-            <div v-if="emotionalState.state && currentEmotion?.type === 'negative'" class="body-signals">
-              <h4>Body Signals</h4>
-              <p class="step-description">Describe any physical sensations you're experiencing</p>
-              
-              <div class="signal-inputs">
-                <div v-for="(signal, index) in emotionalState.bodySignals" :key="index" class="signal-row">
-                  <select v-model="signal.signal" class="form-select small">
-                    <option value="">Select Signal</option>
-                    <option v-for="bodySignal in bodySignals" :key="bodySignal" :value="bodySignal">
-                      {{ bodySignal }}
-                    </option>
-                  </select>
-                  <div class="intensity-slider">
-                    <span>Intensity:</span>
-                    <input 
-                      type="range" 
-                      v-model="signal.intensity" 
-                      min="1" 
-                      max="10" 
-                      class="slider"
-                    >
-                    <span class="intensity-value">{{ signal.intensity }}/10</span>
-                  </div>
-                  <button 
-                    class="remove-btn" 
-                    @click="removeBodySignal(index)"
-                    v-if="emotionalState.bodySignals.length > 1"
-                  >
-                    ×
-                  </button>
+          <div class="emotional-check-container">
+            <!-- Left Column: Chat with Aria -->
+            <div class="chat-column">
+              <div class="chat-header">
+                <div class="aria-avatar">
+                  <span class="avatar-icon">👩‍💼</span>
+                  <span class="avatar-name">Aria</span>
+                </div>
+                <div class="chat-status">
+                  <span v-if="ariaTyping" class="typing-indicator">Aria is typing...</span>
                 </div>
               </div>
               
-              <button class="add-signal-btn" @click="addBodySignal">
-                + Add Body Signal
-              </button>
-            </div>
-  
-            <div class="modal-actions">
-              <button class="btn-secondary" @click="currentStep = 1">Back</button>
-              
-              <!-- Positive State Actions -->
-              <div v-if="currentEmotion?.type === 'positive'" class="positive-actions">
-                <button class="btn-primary" @click="proceedToTechnicalAnalysis">
-                  ✅ Proceed Confidently
-                </button>
+              <div class="chat-messages" ref="chatMessages">
+                <div 
+                  v-for="message in conversation" 
+                  :key="message.id"
+                  :class="['message', message.role]"
+                >
+                  <div class="message-avatar">
+                    <span v-if="message.role === 'assistant'">👩‍💼</span>
+                    <span v-else>👤</span>
+                  </div>
+                  <div class="message-content">
+                    <div class="message-text">{{ message.content }}</div>
+                    <div class="message-time">{{ formatTime(message.timestamp) }}</div>
+                  </div>
+                </div>
+                
+                <!-- Typing indicator -->
+                <div v-if="ariaTyping" class="message assistant typing">
+                  <div class="message-avatar">👩‍💼</div>
+                  <div class="message-content">
+                    <div class="typing-dots">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
+                </div>
               </div>
               
-              <!-- Negative State Actions -->
-              <div v-if="currentEmotion?.type === 'negative'" class="negative-actions">
-                <button class="btn-caution" @click="proceedWithCaution">
-                  ⚠️ Proceed with Extra Caution
+              <div class="chat-input-container">
+                <input 
+                  v-model="userMessage" 
+                  @keyup.enter="sendUserMessage"
+                  placeholder="Type your response to Aria..."
+                  class="chat-input"
+                  :disabled="ariaTyping"
+                />
+                <button 
+                  @click="sendUserMessage" 
+                  class="send-btn"
+                  :disabled="!userMessage.trim() || ariaTyping"
+                >
+                  Send
                 </button>
-                <button class="btn-break" @click="takeBreak">
-                  ⏸️ Take 5 Minute Break
-                </button>
-                <button class="btn-reconsider" @click="reconsiderTrade">
-                  🔄 Reconsider This Trade
-                </button>
+              </div>
+            </div>
+
+            <!-- Right Column: Emotional State Selection -->
+            <div class="emotion-column">
+              <div class="emotion-section">
+                <h3>How are you feeling right now?</h3>
+                <p class="step-description">Select your current emotional state</p>
+                
+                <div class="emotional-states">
+                  <div 
+                    v-for="emotion in emotionalStates" 
+                    :key="emotion.value"
+                    class="emotion-card"
+                    :class="{ 
+                      positive: emotion.type === 'positive', 
+                      negative: emotion.type === 'negative',
+                      selected: emotionalState.state === emotion.value 
+                    }"
+                    @click="selectEmotion(emotion)"
+                  >
+                    <span class="emotion-icon">{{ emotion.icon }}</span>
+                    <span class="emotion-label">{{ emotion.label }}</span>
+                  </div>
+                </div>
+
+                <!-- Body Signals (only for negative emotions) -->
+                <div v-if="emotionalState.state && currentEmotion?.type === 'negative'" class="body-signals">
+                  <h4>Body Signals</h4>
+                  <p class="step-description">Describe any physical sensations you're experiencing</p>
+                  
+                  <div class="signal-inputs">
+                    <div v-for="(signal, index) in emotionalState.bodySignals" :key="index" class="signal-row">
+                      <select v-model="signal.signal" class="form-select small">
+                        <option value="">Select Signal</option>
+                        <option v-for="bodySignal in bodySignals" :key="bodySignal" :value="bodySignal">
+                          {{ bodySignal }}
+                        </option>
+                      </select>
+                      <div class="intensity-slider">
+                        <span>Intensity:</span>
+                        <input 
+                          type="range" 
+                          v-model="signal.intensity" 
+                          min="1" 
+                          max="10" 
+                          class="slider"
+                        >
+                        <span class="intensity-value">{{ signal.intensity }}/10</span>
+                      </div>
+                      <button 
+                        class="remove-btn" 
+                        @click="removeBodySignal(index)"
+                        v-if="emotionalState.bodySignals.length > 1"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <button class="add-signal-btn" @click="addBodySignal">
+                    + Add Body Signal
+                  </button>
+                </div>
+              </div>
+
+              <div class="modal-actions">
+                <button class="btn-secondary" @click="currentStep = 1">Back</button>
+                
+                <!-- Positive State Actions -->
+                <div v-if="currentEmotion?.type === 'positive'" class="positive-actions">
+                  <button class="btn-primary" @click="proceedToTechnicalAnalysis">
+                    ✅ Proceed Confidently
+                  </button>
+                </div>
+                
+                <!-- Negative State Actions -->
+                <div v-if="currentEmotion?.type === 'negative'" class="negative-actions">
+                  <button class="btn-caution" @click="proceedWithCaution">
+                    ⚠️ Proceed with Extra Caution
+                  </button>
+                  <button class="btn-break" @click="takeBreak">
+                    ⏸️ Take 5 Minute Break
+                  </button>
+                  <button class="btn-reconsider" @click="reconsiderTrade">
+                    🔄 Reconsider This Trade
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-  
+
         <!-- Add Asset Modal -->
         <div v-if="showAddAsset" class="modal-overlay inner" @click="showAddAsset = false">
           <div class="modal-content small" @click.stop>
@@ -220,19 +275,21 @@
       </div>
     </div>
   </template>
-  
+
   <script setup>
-  import { ref, computed, onMounted } from 'vue';
+  import { ref, computed, onMounted, nextTick } from 'vue';
   import axios from 'axios';
-  
+
   const emit = defineEmits(['close', 'plan-created']);
-  
+
   const currentStep = ref(1);
   const showAddAsset = ref(false);
   const newAsset = ref('');
-  const aiAnalysis = ref('');
   const isLoading = ref(false);
-  
+  const ariaTyping = ref(false);
+  const userMessage = ref('');
+  const chatMessages = ref(null);
+
   // Configuration data from API
   const availableAssets = ref([]);
   const timeframes = ref([]);
@@ -250,27 +307,31 @@
     direction: '',
     timeframe: ''
   });
-  
+
   const emotionalState = ref({
     state: '',
     bodySignals: [{ signal: '', intensity: 5 }],
     notes: ''
   });
-  
+
   const currentTradePlanId = ref(null);
   
+  // Chat conversation
+  const conversation = ref([]);
+  let messageIdCounter = 0;
+
   const currentEmotion = computed(() => {
     return emotionalStates.value.find(e => e.value === emotionalState.value.state);
   });
-  
+
   const isTradeSetupValid = computed(() => {
     return tradeSetup.value.asset && tradeSetup.value.direction && tradeSetup.value.timeframe;
   });
-  
+
   const closeModal = () => {
     emit('close');
   };
-  
+
   const addNewAsset = async () => {
     if (!newAsset.value) return;
     
@@ -307,16 +368,16 @@
       newAsset.value = '';
     }
   };
-  
+
   const addBodySignal = () => {
     emotionalState.value.bodySignals.push({ signal: '', intensity: 5 });
   };
-  
+
   const removeBodySignal = (index) => {
     emotionalState.value.bodySignals.splice(index, 1);
   };
-  
-  const selectEmotion = (emotion) => {
+
+  const selectEmotion = async (emotion) => {
     emotionalState.value.state = emotion.value;
     // Reset body signals when switching emotions
     if (emotion.type === 'positive') {
@@ -324,8 +385,89 @@
     } else if (emotionalState.value.bodySignals.length === 0) {
       emotionalState.value.bodySignals = [{ signal: '', intensity: 5 }];
     }
+    
+    // Add emotion selection to chat
+    addUserMessage(`I'm feeling ${emotion.label.toLowerCase()}`);
+    
+    // Trigger AI response to emotion selection
+    await triggerAriaEmotionResponse(emotion);
   };
-  
+
+  const triggerAriaEmotionResponse = async (emotion) => {
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const response = await axios.post(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/chat`, {
+        message: `I just selected ${emotion.label.toLowerCase()} as my emotional state`,
+        emotionalState: emotionalState.value
+      }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+      
+      await addAriaMessage(response.data.aiResponse);
+    } catch (error) {
+      console.error('Error triggering AI response for emotion:', error);
+      await addAriaMessage("I notice you've selected an emotional state. Let's explore this feeling together.");
+    }
+  };
+
+  const scrollToBottom = () => {
+    nextTick(() => {
+      if (chatMessages.value) {
+        chatMessages.value.scrollTop = chatMessages.value.scrollHeight;
+      }
+    });
+  };
+
+  const addUserMessage = (content) => {
+    conversation.value.push({
+      id: messageIdCounter++,
+      role: 'user',
+      content: content,
+      timestamp: new Date()
+    });
+    scrollToBottom();
+  };
+
+  const addAriaMessage = async (content) => {
+    ariaTyping.value = true;
+    
+    // Simulate typing delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+    
+    conversation.value.push({
+      id: messageIdCounter++,
+      role: 'assistant',
+      content: content,
+      timestamp: new Date()
+    });
+    
+    ariaTyping.value = false;
+    scrollToBottom();
+  };
+
+  const sendUserMessage = async () => {
+    if (!userMessage.value.trim() || ariaTyping.value) return;
+    
+    const message = userMessage.value.trim();
+    userMessage.value = '';
+    addUserMessage(message);
+    
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const response = await axios.post(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/chat`, {
+        message: message,
+        emotionalState: emotionalState.value
+      }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+      
+      await addAriaMessage(response.data.aiResponse);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      await addAriaMessage("I'm having trouble processing your message right now. Let's continue with our emotional check.");
+    }
+  };
+
   const proceedToEmotionalCheck = async () => {
     try {
       isLoading.value = true;
@@ -364,7 +506,7 @@
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
       });
       
-      // Get AI analysis
+      // Get initial AI message
       const aiResponse = await axios.post(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/analyze-emotions`, {
         emotionalData: emotionalState.value,
         todayTrades: todayTradesResponse.data
@@ -372,8 +514,12 @@
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
       });
       
-      aiAnalysis.value = aiResponse.data.aiAnalysis;
       currentStep.value = 2;
+      
+      // Add initial AI message to chat after a brief delay
+      setTimeout(() => {
+        addAriaMessage(aiResponse.data.aiAnalysis);
+      }, 500);
       
     } catch (error) {
       console.error('Error proceeding to emotional check:', error);
@@ -382,29 +528,29 @@
       isLoading.value = false;
     }
   };
-  
+
   const proceedToTechnicalAnalysis = async () => {
     await updateEmotionalState();
     emit('plan-created', currentTradePlanId.value);
     closeModal();
   };
-  
+
   const proceedWithCaution = async () => {
     await updateDecision('proceed_caution');
     emit('plan-created', currentTradePlanId.value);
     closeModal();
   };
-  
+
   const takeBreak = async () => {
     await updateDecision('take_break');
     closeModal();
   };
-  
+
   const reconsiderTrade = async () => {
     await updateDecision('passed');
     closeModal();
   };
-  
+
   const updateEmotionalState = async () => {
     try {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
@@ -431,6 +577,11 @@
     }
   };
 
+  // Helper functions
+  const formatTime = (date) => {
+    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
   // Autocomplete methods
   const filterAssets = () => {
     if (!assetSearch.value) {
@@ -441,17 +592,48 @@
         asset.toLowerCase().includes(searchTerm)
       );
     }
-    highlightedAssetIndex.value = -1;
+    highlightedAssetIndex.value = filteredAssets.value.length > 0 ? 0 : -1;
+  };
+
+  const handleAssetInputFocus = () => {
+    showAssetSuggestions.value = true;
+    filterAssets();
+  };
+
+  const handleAssetKeydown = (event) => {
+    if (!showAssetSuggestions.value || filteredAssets.value.length === 0) return;
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        highlightedAssetIndex.value = (highlightedAssetIndex.value + 1) % filteredAssets.value.length;
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        highlightedAssetIndex.value = highlightedAssetIndex.value <= 0 
+          ? filteredAssets.value.length - 1 
+          : highlightedAssetIndex.value - 1;
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (highlightedAssetIndex.value >= 0) {
+          selectAsset(filteredAssets.value[highlightedAssetIndex.value]);
+        }
+        break;
+      case 'Escape':
+        showAssetSuggestions.value = false;
+        break;
+    }
   };
 
   const selectAsset = (asset) => {
     tradeSetup.value.asset = asset;
     assetSearch.value = asset;
     showAssetSuggestions.value = false;
+    highlightedAssetIndex.value = -1;
   };
 
   const hideSuggestions = () => {
-    // Use setTimeout to allow click event to fire before hiding
     setTimeout(() => {
       showAssetSuggestions.value = false;
     }, 200);
@@ -505,12 +687,12 @@
       availableAssets.value = ['BTC', 'NQ', 'GBPUSD', 'USDJPY', 'GOLD', 'JP225'];
       timeframes.value = ['M15', 'M5', 'M1', 'H1', 'M3', 'H4'];
       emotionalStates.value = [
-        { value: 'calm', label: 'Calm', type: 'positive' },
-        { value: 'focused', label: 'Focused', type: 'positive' },
-        { value: 'confident', label: 'Confident', type: 'positive' },
-        { value: 'anxious', label: 'Anxious', type: 'negative' },
-        { value: 'rushed', label: 'Rushed', type: 'negative' },
-        { value: 'fearful', label: 'Fearful', type: 'negative' }
+        { value: 'calm', label: 'Calm', type: 'positive', icon: '😌' },
+        { value: 'focused', label: 'Focused', type: 'positive', icon: '🎯' },
+        { value: 'confident', label: 'Confident', type: 'positive', icon: '💪' },
+        { value: 'anxious', label: 'Anxious', type: 'negative', icon: '😰' },
+        { value: 'rushed', label: 'Rushed', type: 'negative', icon: '⏱️' },
+        { value: 'fearful', label: 'Fearful', type: 'negative', icon: '😨' }
       ];
       bodySignals.value = ['Tight shoulders, neck jaw', 'Clenched fists or teeth'];
       
@@ -532,7 +714,7 @@
     loadConfigurations();
   });
   </script>
-  
+
   <style scoped>
   .modal-overlay {
     position: fixed;
@@ -546,25 +728,48 @@
     align-items: center;
     z-index: 1000;
   }
-  
+
   .modal-overlay.inner {
     background: rgba(0, 0, 0, 0.3);
   }
-  
+
   .modal-content {
     background: white;
     border-radius: 16px;
     padding: 0;
-    max-width: 600px;
-    width: 90%;
+    max-width: 95vw;
+    width: 1100px;
     max-height: 90vh;
-    overflow-y: auto;
+    height: 650px;
+    overflow: auto;
+    resize: both;
+    position: relative;
+    min-width: 800px;
+    min-height: 500px;
   }
-  
+
+  /* Resize handle styling */
+  .modal-content::after {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 15px;
+    height: 15px;
+    background: linear-gradient(135deg, transparent 50%, #6c757d 50%);
+    cursor: se-resize;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+  }
+
+  .modal-content:hover::after {
+    opacity: 1;
+  }
+
   .modal-content.small {
     max-width: 400px;
   }
-  
+
   .modal-header {
     display: flex;
     justify-content: space-between;
@@ -572,13 +777,13 @@
     padding: 1.5rem 2rem;
     border-bottom: 1px solid #e9ecef;
   }
-  
+
   .modal-header h2 {
     margin: 0;
     color: #2c3e50;
     font-size: 1.5rem;
   }
-  
+
   .close-btn {
     background: none;
     border: none;
@@ -592,36 +797,36 @@
     align-items: center;
     justify-content: center;
   }
-  
+
   .close-btn:hover {
     color: #2c3e50;
   }
-  
+
   .step-content {
     padding: 2rem;
   }
-  
+
   .step-indicator {
     color: #6c757d;
     font-size: 0.9rem;
   }
-  
+
   .step-description {
     color: #6c757d;
     margin-bottom: 1.5rem;
   }
-  
+
   .form-group {
     margin-bottom: 1.5rem;
   }
-  
+
   .form-group label {
     display: block;
     margin-bottom: 0.5rem;
     font-weight: 600;
     color: #2c3e50;
   }
-  
+
   .form-select, .form-input {
     width: 100%;
     padding: 0.75rem;
@@ -629,11 +834,11 @@
     border-radius: 8px;
     font-size: 1rem;
   }
-  
+
   .form-select.small {
     width: 200px;
   }
-  
+
   .asset-autocomplete {
     display: flex;
     gap: 0.5rem;
@@ -693,12 +898,12 @@
     cursor: pointer;
     white-space: nowrap;
   }
-  
+
   .direction-buttons {
     display: flex;
     gap: 1rem;
   }
-  
+
   .direction-btn {
     flex: 1;
     padding: 1rem;
@@ -709,245 +914,413 @@
     font-weight: 600;
     transition: all 0.3s ease;
   }
-  
+
   .direction-btn.long.active {
     background: #d4edda;
     border-color: #28a745;
     color: #155724;
   }
-  
+
   .direction-btn.short.active {
     background: #f8d7da;
     border-color: #dc3545;
     color: #721c24;
   }
-  
+
+  /* Emotional Check Container - Two Column Layout */
+  .emotional-check-container {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 0;
+    height: 650px;
+  }
+
+  /* Left Column: Chat */
+  .chat-column {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #e9ecef;
+    background: #f8f9fa;
+  }
+
+  .chat-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+    background: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .aria-avatar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .avatar-icon {
+    font-size: 1.5rem;
+  }
+
+  .avatar-name {
+    font-weight: 600;
+    color: #2c3e50;
+  }
+
+  .typing-indicator {
+    color: #6c757d;
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .message {
+    display: flex;
+    gap: 0.75rem;
+    max-width: 85%;
+  }
+
+  .message.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+
+  .message.assistant {
+    align-self: flex-start;
+  }
+
+  .message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .message.user .message-avatar {
+    background: #007bff;
+    color: white;
+  }
+
+  .message.assistant .message-avatar {
+    background: #6f42c1;
+    color: white;
+  }
+
+  .message-content {
+    background: white;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .message.user .message-content {
+    background: #007bff;
+    color: white;
+  }
+
+  .message-text {
+    line-height: 1.4;
+    margin-bottom: 0.25rem;
+  }
+
+  .message-time {
+    font-size: 0.75rem;
+    color: #6c757d;
+    opacity: 0.7;
+  }
+
+  .message.user .message-time {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  /* Typing animation */
+  .typing-dots {
+    display: flex;
+    gap: 4px;
+  }
+
+  .typing-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #6c757d;
+    animation: typing 1.4s infinite ease-in-out;
+  }
+
+  .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+  .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+  @keyframes typing {
+    0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  .chat-input-container {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e9ecef;
+    background: white;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .chat-input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+
+  .send-btn {
+    padding: 0.75rem 1.5rem;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .send-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+  }
+
+  /* Right Column: Emotions */
+  .emotion-column {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    background: white;
+    overflow-y: auto;
+  }
+
+  .emotion-section {
+    flex: 1;
+  }
+
   .emotional-states {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
     margin-bottom: 2rem;
   }
-  
+
   .emotion-card {
     border: 2px solid #e9ecef;
     border-radius: 12px;
-    padding: 1rem;
+    padding: 1rem 0.75rem;
     text-align: center;
     cursor: pointer;
     transition: all 0.3s ease;
   }
-  
+
   .emotion-card.positive.selected {
     background: #d4edda;
     border-color: #28a745;
   }
-  
+
   .emotion-card.negative.selected {
     background: #f8d7da;
     border-color: #dc3545;
   }
-  
+
   .emotion-icon {
-    font-size: 2rem;
+    font-size: 1.5rem;
     display: block;
     margin-bottom: 0.5rem;
   }
-  
+
   .emotion-label {
     font-weight: 500;
+    font-size: 0.9rem;
   }
-  
+
   .body-signals {
     background: #f8f9fa;
     padding: 1.5rem;
     border-radius: 12px;
     margin-bottom: 2rem;
   }
-  
+
   .signal-row {
     display: flex;
     align-items: center;
     gap: 1rem;
     margin-bottom: 1rem;
   }
-  
+
   .intensity-slider {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-}
-
-.slider {
-  flex: 1;
-}
-
-.intensity-value {
-  min-width: 40px;
-  text-align: center;
-}
-
-.remove-btn {
-  background: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  width: 30px;
-  height: 30px;
-  cursor: pointer;
-}
-
-.add-signal-btn {
-  background: #f8f9fa;
-  border: 2px dashed #e9ecef;
-  border-radius: 8px;
-  padding: 0.75rem;
-  width: 100%;
-  cursor: pointer;
-  color: #6c757d;
-}
-
-.ai-analysis {
-  background: #e7f3ff;
-  border: 1px solid #b3d9ff;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.ai-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.ai-icon {
-  font-size: 1.5rem;
-}
-
-.ai-header h4 {
-  margin: 0;
-  color: #2c3e50;
-}
-
-.ai-content p {
-  margin: 0;
-  color: #2c3e50;
-  line-height: 1.5;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.positive-actions,
-.negative-actions {
-  display: flex;
-  gap: 1rem;
-}
-
-.btn-primary,
-.btn-secondary,
-.btn-caution,
-.btn-break,
-.btn-reconsider {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-primary {
-  background: #28a745;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #218838;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #5a6268;
-}
-
-.btn-caution {
-  background: #ffc107;
-  color: #212529;
-}
-
-.btn-caution:hover {
-  background: #e0a800;
-}
-
-.btn-break {
-  background: #17a2b8;
-  color: white;
-}
-
-.btn-break:hover {
-  background: #138496;
-}
-
-.btn-reconsider {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-reconsider:hover {
-  background: #c82333;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-@media (max-width: 768px) {
-  .modal-content {
-    width: 95%;
-    margin: 1rem;
-  }
-  
-  .emotional-states {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .signal-row {
-    flex-direction: column;
-    align-items: stretch;
+    display: flex;
+    align-items: center;
     gap: 0.5rem;
+    flex: 1;
   }
-  
-  .form-select.small {
+
+  .slider {
+    flex: 1;
+  }
+
+  .intensity-value {
+    min-width: 40px;
+    text-align: center;
+  }
+
+  .remove-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+  }
+
+  .add-signal-btn {
+    background: #f8f9fa;
+    border: 2px dashed #e9ecef;
+    border-radius: 8px;
+    padding: 0.75rem;
     width: 100%;
+    cursor: pointer;
+    color: #6c757d;
   }
-  
+
   .modal-actions {
-    flex-direction: column;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e9ecef;
   }
-  
+
   .positive-actions,
   .negative-actions {
-    flex-direction: column;
-    width: 100%;
+    display: flex;
+    gap: 1rem;
   }
-  
-  .positive-actions button,
-  .negative-actions button {
-    width: 100%;
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-caution,
+  .btn-break,
+  .btn-reconsider {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
   }
-}
-</style>
+
+  .btn-primary {
+    background: #28a745;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #218838;
+  }
+
+  .btn-secondary {
+    background: #6c757d;
+    color: white;
+  }
+
+  .btn-secondary:hover {
+    background: #5a6268;
+  }
+
+  .btn-caution {
+    background: #ffc107;
+    color: #212529;
+  }
+
+  .btn-caution:hover {
+    background: #e0a800;
+  }
+
+  .btn-break {
+    background: #17a2b8;
+    color: white;
+  }
+
+  .btn-break:hover {
+    background: #138496;
+  }
+
+  .btn-reconsider {
+    background: #dc3545;
+    color: white;
+  }
+
+  .btn-reconsider:hover {
+    background: #c82333;
+  }
+
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 768px) {
+    .modal-content {
+      width: 95%;
+      margin: 1rem;
+    }
+
+    .emotional-check-container {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+
+    .chat-column {
+      border-right: none;
+      border-bottom: 1px solid #e9ecef;
+      height: 400px;
+    }
+
+    .emotional-states {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .signal-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+    }
+
+    .form-select.small {
+      width: 100%;
+    }
+
+    .modal-actions {
+      flex-direction: column;
+    }
+
+    .positive-actions,
+    .negative-actions {
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .positive-actions button,
+    .negative-actions button {
+      width: 100%;
+    }
+  }
+  </style>

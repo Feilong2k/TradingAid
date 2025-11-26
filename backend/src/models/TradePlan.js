@@ -1,5 +1,21 @@
 import mongoose from 'mongoose';
 
+const chatMessageSchema = new mongoose.Schema({
+  role: {
+    type: String,
+    enum: ['user', 'assistant'],
+    required: true
+  },
+  content: {
+    type: String,
+    required: true
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now
+  }
+});
+
 const emotionalStateSchema = new mongoose.Schema({
   state: {
     type: String,
@@ -46,6 +62,9 @@ const tradePlanSchema = new mongoose.Schema({
   
   // Emotional Assessment
   emotionalState: emotionalStateSchema,
+  
+  // Chat Conversation
+  conversation: [chatMessageSchema],
   
   // Workflow Status
   status: {

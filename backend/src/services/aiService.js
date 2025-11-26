@@ -67,6 +67,42 @@ Keep it supportive and actionable, not overwhelming.
     return await this.callDeepseek(userId, prompt, 'deepseek-reasoner');
   }
 
+  // Analyze chat message during emotional check conversation
+  async analyzeChatMessage(userId, userMessage, emotionalState, conversationHistory = []) {
+    // Format conversation history for context
+    const conversationContext = conversationHistory
+      .slice(-6) // Last 6 messages for context
+      .map(msg => `${msg.role === 'user' ? 'User' : 'Aria'}: ${msg.content}`)
+      .join('\n');
+
+    const currentEmotion = emotionalState?.state ? `Current emotion: ${emotionalState.state}` : 'No emotion selected yet';
+
+    const prompt = `
+EMOTIONAL CHECK CHAT:
+
+CONVERSATION CONTEXT:
+${conversationContext || 'No previous conversation'}
+
+CURRENT EMOTIONAL STATE:
+${currentEmotion}
+
+USER'S MESSAGE:
+"${userMessage}"
+
+Please respond as Aria, the supportive trading coach. Your response should:
+1. Acknowledge the user's message naturally
+2. Provide emotional support and guidance
+3. Ask thoughtful questions to encourage self-reflection
+4. Keep responses concise (2-3 sentences maximum)
+5. Maintain a warm, caring friend tone
+6. Guide the conversation toward emotional awareness and trading readiness
+
+Remember: You're helping the user through an emotional check before trading. Focus on their emotional state and readiness.
+`;
+
+    return await this.callDeepseek(userId, prompt, 'deepseek-reasoner');
+  }
+
   async callDeepseek(userId, prompt, model = 'deepseek-reasoner') {
     try {
       // Get conversation history for context continuity
