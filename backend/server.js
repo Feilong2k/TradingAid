@@ -27,15 +27,13 @@ app.use(cors(corsOptions));
 // Middleware
 app.use(express.json());
 
-// MongoDB connection with robust configuration
+// MongoDB connection with updated configuration
 const mongooseOptions = {
   serverSelectionTimeoutMS: 30000, // 30 seconds
   socketTimeoutMS: 45000, // 45 seconds
-  bufferCommands: false,
-  bufferMaxEntries: 0,
   maxPoolSize: 10,
   retryWrites: true,
-  w: 'majority'
+  w: "majority",
 };
 
 const connectWithRetry = async () => {
