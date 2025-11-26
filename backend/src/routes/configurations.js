@@ -64,6 +64,7 @@ router.post('/assets', authenticateToken, async (req, res) => {
     }
     
     console.log(`📝 Adding new asset: ${asset}`);
+    console.log(`🔍 User: ${req.user.email}, ID: ${req.user.userId}`);
     
     // Find the assets configuration
     const assetsConfig = await Configuration.findOne({ 
@@ -71,12 +72,18 @@ router.post('/assets', authenticateToken, async (req, res) => {
       isActive: true 
     });
     
+    console.log(`🔍 Found assets config:`, assetsConfig ? 'Yes' : 'No');
+    
     if (!assetsConfig) {
+      console.log('❌ Assets configuration not found in database');
       return res.status(404).json({ error: 'Assets configuration not found' });
     }
     
+    console.log(`🔍 Current assets: ${assetsConfig.configData.join(', ')}`);
+    
     // Check if asset already exists
     if (assetsConfig.configData.includes(asset)) {
+      console.log(`❌ Asset already exists: ${asset}`);
       return res.status(409).json({ error: 'Asset already exists' });
     }
     
@@ -84,20 +91,24 @@ router.post('/assets', authenticateToken, async (req, res) => {
     assetsConfig.configData.push(asset);
     assetsConfig.updatedAt = new Date();
     
-    await assetsConfig.save();
+    console.log(`💾 Attempting to save asset to database...`);
+    const savedConfig = await assetsConfig.save();
     
-    console.log(`✅ Successfully added asset: ${asset}`);
-    console.log(`📊 Updated assets: ${assetsConfig.configData.join(', ')}`);
+    console.log(`✅ Successfully saved asset: ${asset}`);
+    console.log(`📊 Updated assets: ${savedConfig.configData.join(', ')}`);
+    console.log(`🆔 Document ID: ${savedConfig._id}`);
     
     res.json({ 
       success: true, 
       message: 'Asset added successfully',
-      assets: assetsConfig.configData 
+      assets: savedConfig.configData 
     });
     
   } catch (error) {
     console.error('❌ Error adding asset:', error);
-    res.status(500).json({ error: 'Failed to add asset' });
+    console.error('❌ Error details:', error.message);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to add asset: ' + error.message });
   }
 });
 
