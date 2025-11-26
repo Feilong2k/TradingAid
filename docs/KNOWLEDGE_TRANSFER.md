@@ -194,11 +194,11 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 - **Database**: MongoDB atomic update operation
 - **Error Handling**: Comprehensive logging and error responses
 
-### Dynamic Configuration System (November 26, 2025)
-- **Added Configuration Model**: Centralized configuration management in MongoDB
-- **Timeframe Collections**: Implemented multi-timeframe analysis sets instead of individual timeframes
-- **Native MongoDB Driver**: Fixed seed script to use direct MongoDB insertion for reliability
-- **Public Configuration API**: Created `/api/config` endpoint for frontend configuration loading
+### Seed Script Fix & Configuration Reliability (November 26, 2025)
+- **Problem Identified**: Previous seed script used native MongoDB driver which bypassed Mongoose validation
+- **Solution**: Updated to use proper Mongoose Configuration model with full ES6 imports
+- **Data Integrity**: Complete configuration data with proper structure and validation
+- **Connection Management**: Optimized mongoose connection with 30s server timeout, 45s socket timeout
 
 **Configuration Types:**
 - **Assets**: 6 predefined trading instruments (BTC, NQ, GBPUSD, USDJPY, GOLD, JP225) with dynamic addition capability
@@ -206,13 +206,23 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
   - M15, M5, M1 (Short-term analysis)
   - H1, M15, M5 (Medium-term analysis) 
   - H4, H1, M15 (Long-term analysis)
-- **Emotional States**: 15 emotions with positive/negative categorization
-- **Body Signals**: 19 physical sensation signals across stress, FOMO, anger, fear, and greed
+- **Emotional States**: 15 emotions (3 positive, 12 negative) with proper categorization
+- **Body Signals**: 19 physical sensation signals across 5 categories (stress, FOMO, anger, fear, greed)
 
-**Technical Fix:**
-- Fixed seed script to use native MongoDB driver instead of mongoose models
-- Added comprehensive debugging and error handling
-- Ensured all configurations include `isActive: true` field for API filtering
+**Technical Improvements:**
+- **Mongoose Integration**: Proper use of `Configuration.insertMany()` instead of raw MongoDB operations
+- **Complete Data**: All 4 configuration types fully populated with validated structure
+- **Error Handling**: Comprehensive try-catch with proper exit codes and logging
+- **Module Structure**: Clean ES6 imports with proper file paths
+- **Connection Options**: Server selection timeout (30s), socket timeout (45s), connection pooling (max 10)
+
+**Usage:**
+```bash
+cd backend
+node src/utils/seedConfigurations.js
+```
+
+This reliably resets all configurations to their original validated state.
 
 ### Security Enhancements (Commit: `ffaa04e`)
 - Added comprehensive input validation with Joi
