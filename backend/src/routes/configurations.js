@@ -54,6 +54,53 @@ router.get('/:type', async (req, res) => {
   }
 });
 
+// Add new asset to assets configuration (requires authentication)
+router.post('/assets', authenticateToken, async (req, res) => {
+  try {
+    const { asset } = req.body;
+    
+    if (!asset) {
+      return res.status(400).json({ error: 'Asset symbol is required' });
+    }
+    
+    console.log(`📝 Adding new asset: ${asset}`);
+    
+    // Find the assets configuration
+    const assetsConfig = await Configuration.findOne({ 
+      configType: 'assets', 
+      isActive: true 
+    });
+    
+    if (!assetsConfig) {
+      return res.status(404).json({ error: 'Assets configuration not found' });
+    }
+    
+    // Check if asset already exists
+    if (assetsConfig.configData.includes(asset)) {
+      return res.status(409).json({ error: 'Asset already exists' });
+    }
+    
+    // Add the new asset
+    assetsConfig.configData.push(asset);
+    assetsConfig.updatedAt = new Date();
+    
+    await assetsConfig.save();
+    
+    console.log(`✅ Successfully added asset: ${asset}`);
+    console.log(`📊 Updated assets: ${assetsConfig.configData.join(', ')}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Asset added successfully',
+      assets: assetsConfig.configData 
+    });
+    
+  } catch (error) {
+    console.error('❌ Error adding asset:', error);
+    res.status(500).json({ error: 'Failed to add asset' });
+  }
+});
+
 // Update configuration (admin only - for future use)
 router.put('/:type', authenticateToken, async (req, res) => {
   try {

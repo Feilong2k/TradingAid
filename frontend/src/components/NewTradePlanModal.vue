@@ -246,13 +246,41 @@
     emit('close');
   };
   
-  const addNewAsset = () => {
-    if (newAsset.value && !availableAssets.value.includes(newAsset.value)) {
-      availableAssets.value.push(newAsset.value);
-      tradeSetup.value.asset = newAsset.value;
+  const addNewAsset = async () => {
+    if (!newAsset.value) return;
+    
+    // Check if asset already exists in local state
+    if (availableAssets.value.includes(newAsset.value)) {
+      alert('This asset already exists!');
+      return;
     }
-    showAddAsset.value = false;
-    newAsset.value = '';
+    
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const response = await axios.post(`${apiBaseUrl}/api/config/assets`, {
+        asset: newAsset.value
+      }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+      
+      if (response.data.success) {
+        // Update local state with the new asset
+        availableAssets.value = response.data.assets;
+        tradeSetup.value.asset = newAsset.value;
+        console.log('✅ Asset added successfully:', newAsset.value);
+      }
+    } catch (error) {
+      console.error('❌ Error adding asset:', error);
+      if (error.response && error.response.status === 409) {
+        alert('This asset already exists in the database!');
+      } else {
+        alert('Failed to add asset. Please try again.');
+      }
+      return;
+    } finally {
+      showAddAsset.value = false;
+      newAsset.value = '';
+    }
   };
   
   const addBodySignal = () => {
