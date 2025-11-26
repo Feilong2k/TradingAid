@@ -8,11 +8,15 @@ export default defineConfig({
     proxy: {
       "/api": {
         target: "http://localhost:3000",
-        changeOrigin: true,
-      },
-    },
+        changeOrigin: true
+      }
+    }
   },
   build: {
-    outDir: "dist",
+    outDir: 'dist'
   },
+  // Fix for client-side routing in production
+  base: './',
+  // Ensure public files are copied to dist
+  publicDir: 'public'
 });
