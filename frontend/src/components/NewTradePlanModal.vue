@@ -276,21 +276,22 @@
   const proceedToEmotionalCheck = async () => {
     try {
       isLoading.value = true;
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
       
       // Create trade plan
-      const response = await axios.post('/api/trade-plans', tradeSetup.value, {
+      const response = await axios.post(`${apiBaseUrl}/api/trade-plans`, tradeSetup.value, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
       });
       
       currentTradePlanId.value = response.data._id;
       
       // Get today's trades for AI analysis
-      const todayTradesResponse = await axios.get('/api/trade-plans/today-trades', {
+      const todayTradesResponse = await axios.get(`${apiBaseUrl}/api/trade-plans/today-trades`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
       });
       
       // Get AI analysis
-      const aiResponse = await axios.post(`/api/trade-plans/${currentTradePlanId.value}/analyze-emotions`, {
+      const aiResponse = await axios.post(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/analyze-emotions`, {
         emotionalData: emotionalState.value,
         todayTrades: todayTradesResponse.data
       }, {
@@ -332,7 +333,8 @@
   
   const updateEmotionalState = async () => {
     try {
-      await axios.patch(`/api/trade-plans/${currentTradePlanId.value}/emotional-state`, {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      await axios.patch(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/emotional-state`, {
         emotionalState: emotionalState.value
       }, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
@@ -341,10 +343,11 @@
       console.error('Error updating emotional state:', error);
     }
   };
-  
+
   const updateDecision = async (decision) => {
     try {
-      await axios.patch(`/api/trade-plans/${currentTradePlanId.value}/decision`, {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      await axios.patch(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/decision`, {
         decision
       }, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
@@ -357,11 +360,15 @@
   // Load configurations from API
   const loadConfigurations = async () => {
     try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const configUrl = apiBaseUrl ? `${apiBaseUrl}/api/config` : '/api/config';
+      
       console.log('🚀 Starting configuration loading...');
-      console.log('API URL:', '/api/config');
+      console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL);
+      console.log('API URL:', configUrl);
       
       // Remove auth headers since we made the API public
-      const response = await axios.get('/api/config');
+      const response = await axios.get(configUrl);
       
       console.log('✅ Configuration API response received:', response.data);
       console.log('Response keys:', Object.keys(response.data));
