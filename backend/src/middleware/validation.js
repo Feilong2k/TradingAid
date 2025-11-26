@@ -3,7 +3,7 @@ import Joi from 'joi';
 // Validation schema for OAuth callback
 const oauthCallbackSchema = Joi.object({
   code: Joi.string().required().min(10).max(500)
-    .pattern(/^[a-zA-Z0-9\-_\.]+$/)
+    .pattern(/^[a-zA-Z0-9\-_\.\/+=]+$/)
     .messages({
       'string.empty': 'Authorization code is required',
       'string.min': 'Invalid authorization code format',
