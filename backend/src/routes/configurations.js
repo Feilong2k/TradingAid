@@ -132,18 +132,58 @@ router.get("/test/save", async (req, res) => {
   try {
     console.log("🧪 Testing MongoDB save operation...");
 
-    // Try to create a test document using a valid configType from the enum
-    const testDoc = await Configuration.create({
-      configType: "emotions",
-      configData: ["TEST1", "TEST2"],
+    // Find the assets configuration and add a test asset
+    const assetsConfig = await Configuration.findOne({
+      configType: "assets",
+      isActive: true,
     });
 
-    console.log("✅ Test document created:", testDoc._id);
+    if (!assetsConfig) {
+      return res.status(404).json({ error: "Assets configuration not found" });
+    }
+
+    // Check if configData is an array
+    if (!Array.isArray(assetsConfig.configData)) {
+      console.log(
+        "❌ configData is not an array:",
+        typeof assetsConfig.configData
+      );
+      return res
+        .status(500)
+        .json({ error: "configData must be an array for assets" });
+    }
+
+    console.log(`🔍 Current assets: ${assetsConfig.configData.join(", ")}`);
+
+    // Add a test asset
+    const testAsset = "TESTASSET";
+    if (assetsConfig.configData.includes(testAsset)) {
+      console.log(`❌ Test asset already exists: ${testAsset}`);
+      // Remove it first to test adding it again
+      assetsConfig.configData = assetsConfig.configData.filter(
+        (asset) => asset !== testAsset
+      );
+    }
+
+    assetsConfig.configData.push(testAsset);
+    assetsConfig.updatedAt = new Date();
+
+    // Mark the field as modified to ensure Mongoose detects the change
+    assetsConfig.markModified("configData");
+
+    console.log(`💾 Attempting to save test asset to database...`);
+    console.log(`📝 About to save:`, assetsConfig);
+
+    const savedConfig = await assetsConfig.save();
+
+    console.log(`✅ Successfully saved test asset: ${testAsset}`);
+    console.log(`📊 Updated assets: ${savedConfig.configData.join(", ")}`);
+    console.log(`🆔 Saved doc _id:`, savedConfig._id);
 
     res.json({
       success: true,
-      message: "Test save successful",
-      document: testDoc,
+      message: "Test asset added successfully",
+      assets: savedConfig.configData,
     });
   } catch (error) {
     console.error("❌ Test save failed:", error);
