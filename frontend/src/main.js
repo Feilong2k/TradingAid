@@ -3,7 +3,9 @@ import { createPinia } from "pinia";
 import { createRouter, createWebHistory } from "vue-router";
 import App from "./App.vue";
 import Home from "./views/Home.vue";
-import Dashboard from "./views/Dashboard.vue";
+import TradePlanning from "./views/TradePlanning.vue";
+import ActiveTrades from "./views/ActiveTrades.vue";
+import TradeHistory from "./views/TradeHistory.vue";
 import AuthSuccess from "./views/AuthSuccess.vue";
 import AuthError from "./views/AuthError.vue";
 
@@ -19,7 +21,9 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/", component: Home },
-    { path: "/dashboard", component: Dashboard },
+    { path: "/planning", component: TradePlanning },
+    { path: "/active", component: ActiveTrades },
+    { path: "/history", component: TradeHistory },
     { path: "/auth-success", component: AuthSuccess },
     { path: "/auth-error", component: AuthError },
   ],
