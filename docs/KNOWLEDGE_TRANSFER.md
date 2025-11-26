@@ -235,6 +235,49 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
    - **Mistake**: Hardcoded API URLs that break in different environments
    - **Solution**: Use environment variables for API base URLs
 
+### Backend Validation & Emotional State Improvements (November 26, 2025)
+
+#### 1. Dynamic Emotional State Support
+- **Removed Enum Validation**: TradePlan.emotionalState.state no longer uses hardcoded enum values
+- **Dynamic Emotions**: Frontend now uses emotions loaded from configuration API
+- **Flexible System**: Allows adding new emotional states without backend changes
+- **Admin-Controlled**: Emotional states can be managed via admin configuration
+
+#### 2. Enhanced API Validation
+- **Joi Validation**: Added comprehensive validation for PATCH emotional-state and decision endpoints
+- **Error Prevention**: Prevents invalid data from reaching database
+- **Consistent Error Messages**: Standardized validation error responses
+- **Input Sanitization**: Strips unknown fields and validates required parameters
+
+#### 3. Timeframe Normalization
+- **Frontend/Backend Bridge**: Converts M/H format (M15, H1) to backend format (15m, 1h)
+- **Seamless Integration**: Users see familiar timeframe labels while backend uses standardized format
+- **Backend Processing**: Automatic normalization in trade plan creation endpoint
+- **Validation Compatibility**: Maintains Joi validation while supporting flexible frontend display
+
+#### 4. Admin Security for Configuration Routes
+- **Admin Guard**: Added `requireAdmin` middleware for configuration modification routes
+- **Environment-Based**: Admin emails configured via ADMIN_EMAILS environment variable
+- **Protected Endpoints**: Asset addition and emotions reset now require admin privileges
+- **Security Enhancement**: Prevents unauthorized modification of system configurations
+
+#### 5. Active Trades Endpoint Fix
+- **Status Inclusion**: Fixed `/api/trade-plans/active` to include 'entered' status in query
+- **Complete Data**: Open positions now correctly show trade plans with 'entered' status
+- **Data Consistency**: Ensures all active trade states are properly represented
+
+**Technical Implementation:**
+- **Validation Schemas**: New `emotionalStateUpdateSchema` and `decisionUpdateSchema` in validation middleware
+- **Admin Middleware**: `requireAdmin` function checks user email against ADMIN_EMAILS environment variable
+- **Timeframe Normalization**: Regex-based conversion in trade plan creation endpoint
+- **Status Query Fix**: Updated MongoDB query to include 'entered' status in active trades
+
+**Implementation Lessons:**
+- **Flexible Architecture**: Removing hardcoded enums enables dynamic configuration
+- **Security Layers**: Admin guards protect critical system configuration endpoints
+- **Data Normalization**: Bridge frontend display formats with backend storage requirements
+- **Comprehensive Validation**: Joi validation prevents data integrity issues
+
 ### Asset Autocomplete Enhancement (November 26, 2025)
 
 #### Enhanced Asset Selection Experience
