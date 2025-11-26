@@ -88,6 +88,8 @@ export const useAuthStore = defineStore('auth', () => {
         startActivityTracking();
         
         return true;
+      } else {
+        throw new Error(response.data.error || 'Authentication failed');
       }
     } catch (error) {
       console.error('OAuth callback failed:', error);

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./src/routes/auth.js";
+import tradePlanRoutes from "./src/routes/tradePlans.js";
 
 // Load environment variables
 dotenv.config();
@@ -51,6 +52,7 @@ connectWithRetry();
 
 // Routes
 app.use('/auth', authRoutes);
+app.use('/api/trade-plans', tradePlanRoutes);
 
 // Basic route
 app.get("/", (req, res) => {

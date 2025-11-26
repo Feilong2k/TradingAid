@@ -2,6 +2,7 @@ import express from 'express';
 import { GoogleOAuth } from '../utils/googleOAuth.js';
 import { AuthService } from '../services/authService.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { validateQuery, oauthCallbackSchema } from '../middleware/validation.js';
 
 const router = express.Router();
 
@@ -17,13 +18,9 @@ router.get("/google", (req, res) => {
 });
 
 // Google OAuth callback
-router.get("/google/callback", async (req, res) => {
+router.get("/google/callback", validateQuery(oauthCallbackSchema), async (req, res) => {
   try {
     const { code } = req.query;
-
-    if (!code) {
-      return res.status(400).json({ error: "Authorization code required" });
-    }
 
     console.log("Received OAuth code");
 
@@ -41,25 +38,20 @@ router.get("/google/callback", async (req, res) => {
     // Generate JWT token
     const token = AuthService.generateToken(user);
 
-    // Redirect to frontend with token as URL parameter
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-    const redirectUrl = `${frontendUrl}/auth-success?token=${encodeURIComponent(
-      token
-    )}&user=${encodeURIComponent(
-      JSON.stringify({
+    // Return JSON response instead of redirecting
+    res.json({
+      success: true,
+      token: token,
+      user: {
         id: user._id,
         name: user.name,
         email: user.email,
         picture: user.picture,
-      })
-    )}`;
-
-    console.log("Redirecting to frontend with authentication success");
-    res.redirect(redirectUrl);
+      }
+    });
   } catch (error) {
     console.error("Google OAuth error:", error.message);
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-
+    
     // Provide more user-friendly error messages
     let errorMessage = "Authentication failed. Please try again.";
     if (
@@ -69,10 +61,10 @@ router.get("/google/callback", async (req, res) => {
       errorMessage = "Database connection issue. Please try again in a moment.";
     }
 
-    const errorRedirectUrl = `${frontendUrl}/auth-error?error=${encodeURIComponent(
-      errorMessage
-    )}`;
-    res.redirect(errorRedirectUrl);
+    res.status(500).json({ 
+      success: false,
+      error: errorMessage 
+    });
   }
 });
 
