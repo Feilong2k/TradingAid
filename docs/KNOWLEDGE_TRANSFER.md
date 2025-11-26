@@ -322,6 +322,20 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 
 ---
 
+### Reliability & Fallback Improvements (November 26, 2025)
+
+#### Backend AI Fallback
+- Implemented a graceful fallback in AI service when `DEEPSEEK_API_KEY` is missing or external API fails
+- The backend no longer throws on `analyze-emotions`; it returns a supportive, concise assistant response instead
+- Files:
+  - `backend/src/services/aiService.js` (added `generateFallbackResponse`, key guard, and non-throwing fallback logic)
+
+#### Frontend Stabilization
+- NewTradePlanModal fallback timeframes now match the API collection shape (label + timeframes[] + description)
+- Enhanced error logging in `proceedToEmotionalCheck` to include status, response data, message, URL, and payload
+- Files:
+  - `frontend/src/components/NewTradePlanModal.vue`
+
 ## Known Issues & Future Considerations
 
 ### Current Limitations
