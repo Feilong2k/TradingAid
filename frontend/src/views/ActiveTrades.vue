@@ -143,42 +143,14 @@
   <script setup>
   import { ref, onMounted } from 'vue';
   import { useAuthStore } from '../stores/auth.js';
+  import axios from 'axios';
   
   const authStore = useAuthStore();
   
-  // Mock data
-  const activePositions = ref([
-    {
-      id: 1,
-      symbol: 'BTC/USD',
-      direction: 'long',
-      size: '0.1 BTC',
-      entryPrice: '$42,500',
-      currentPrice: '$43,200',
-      stopLoss: '$41,800',
-      target: '$45,000',
-      pnl: 1.65
-    }
-  ]);
-  
-  const opportunities = ref([
-    {
-      id: 1,
-      symbol: 'ETH/USD',
-      probability: 75,
-      setup: 'Breakout retest',
-      timeframe: '4H',
-      lastUpdated: '2 hours ago'
-    },
-    {
-      id: 2,
-      symbol: 'AAPL',
-      probability: 60,
-      setup: 'Support bounce',
-      timeframe: 'Daily',
-      lastUpdated: '1 day ago'
-    }
-  ]);
+  // Real data from API
+  const activePositions = ref([]);
+  const opportunities = ref([]);
+  const isLoading = ref(false);
   
   const managePosition = (positionId) => {
     console.log('Managing position:', positionId);
@@ -204,8 +176,61 @@
     }
   };
   
+  const loadActiveTradePlans = async () => {
+    isLoading.value = true;
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const response = await axios.get(`${apiBaseUrl}/api/trade-plans/active`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+      
+      console.log('Active trade plans response:', response.data);
+      
+      // Transform trade plan data to match the expected structure
+      activePositions.value = response.data.openPositions.map(plan => ({
+        id: plan._id,
+        symbol: plan.asset,
+        direction: plan.direction,
+        size: '1.0', // Default size for now
+        entryPrice: 'N/A', // Will be set when trade is entered
+        currentPrice: 'N/A', // Will be updated with real data
+        stopLoss: 'N/A', // Will be set in technical analysis
+        target: 'N/A', // Will be set in technical analysis
+        pnl: 0 // Will be calculated when trade is active
+      }));
+      
+      opportunities.value = response.data.monitoringOpportunities.map(plan => ({
+        id: plan._id,
+        symbol: plan.asset,
+        probability: 75, // Default probability for now
+        setup: `${plan.direction} ${plan.timeframe}`,
+        timeframe: plan.timeframe,
+        lastUpdated: formatDate(plan.createdAt)
+      }));
+      
+    } catch (error) {
+      console.error('Error loading active trade plans:', error);
+    } finally {
+      isLoading.value = false;
+    }
+  };
+  
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    
+    return date.toLocaleDateString();
+  };
+  
   onMounted(() => {
-    // TODO: Load actual data from API
+    loadActiveTradePlans();
   });
   </script>
   

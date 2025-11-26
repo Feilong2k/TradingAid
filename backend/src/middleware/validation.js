@@ -30,17 +30,17 @@ const tradePlanSchema = Joi.object({
       'any.only': 'Invalid timeframe'
     }),
   emotionalState: Joi.object({
-    state: Joi.string().valid('calm', 'confident', 'anxious', 'fearful', 'greedy', 'frustrated', 'impatient', 'disciplined').required(),
+    state: Joi.string().valid('calm', 'confident', 'anxious', 'fearful', 'greedy', 'frustrated', 'impatient', 'disciplined').optional(),
     bodySignals: Joi.array().items(
       Joi.object({
-        signal: Joi.string().max(100),
-        intensity: Joi.number().min(1).max(10)
+        signal: Joi.string().max(100).allow('', null),
+        intensity: Joi.number().min(1).max(10).optional()
       })
-    ).max(10),
+    ).max(10).optional(),
     notes: Joi.string().max(500).allow('', null),
     aiAnalysis: Joi.string().max(1000).allow('', null)
-  }).optional(),
-  status: Joi.string().valid('emotional_check', 'technical_analysis', 'planning', 'monitoring', 'entered', 'completed', 'passed_over', 'cancelled').optional(),
+  }).optional().allow(null),
+  status: Joi.string().valid('open', 'emotional_check', 'technical_analysis', 'planning', 'monitoring', 'entered', 'completed', 'passed_over', 'cancelled').optional(),
   decision: Joi.string().valid('proceed', 'proceed_caution', 'take_break', 'reconsider', 'passed').optional()
 });
 

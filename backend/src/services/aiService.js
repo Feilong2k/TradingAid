@@ -15,6 +15,39 @@ export class AIService {
     return await this.callDeepseek(userId, prompt, 'deepseek-chat');
   }
 
+  // Analyze trading context and prompt for emotional check-in
+  async analyzeTradingContext(userId, tradePlan, todayTrades = []) {
+    const tradeContext = {
+      asset: tradePlan.asset,
+      direction: tradePlan.direction,
+      timeframe: tradePlan.timeframe,
+      todayTradeCount: todayTrades.length,
+      isFirstTradeOfDay: todayTrades.length === 0
+    };
+
+    const prompt = `
+TRADING CONTEXT CHECK-IN:
+
+The user is planning to trade ${tradePlan.asset} ${tradePlan.direction} on ${tradePlan.timeframe}.
+
+TRADING DAY CONTEXT:
+- Today's trades so far: ${todayTrades.length}
+- First trade of the day: ${todayTrades.length === 0 ? 'Yes' : 'No'}
+- Recent activity: ${todayTrades.length > 0 ? 'Already traded today' : 'Fresh start'}
+
+EMOTIONAL CHECK-IN REQUEST:
+Please provide a warm, supportive prompt asking the user to check in with their emotional state before proceeding. Focus on:
+1. Acknowledge the trading context briefly
+2. Ask them to reflect on how they're feeling right now
+3. Emphasize the importance of emotional awareness
+4. Keep it concise (2-3 sentences maximum)
+
+Remember: The user hasn't completed the emotional questionnaire yet - you're inviting them to do so now.
+`;
+
+    return await this.callDeepseek(userId, prompt, 'deepseek-reasoner');
+  }
+
   // Analyze emotional questionnaire responses using reasoner model
   async analyzeEmotionalQuestionnaire(userId, questionnaireResponses) {
     const prompt = `
@@ -23,14 +56,12 @@ EMOTIONAL QUESTIONNAIRE ANALYSIS:
 User has completed an emotional questionnaire with the following responses:
 ${JSON.stringify(questionnaireResponses, null, 2)}
 
-Please analyze these emotional responses in the context of trading readiness. Focus on:
-1. Emotional state assessment
-2. Trading readiness evaluation  
-3. Potential emotional triggers or red flags
-4. Coping strategies if needed
-5. Questions to encourage self-reflection
+Please provide a concise analysis (2-3 paragraphs maximum) focusing on:
+1. Key emotional patterns or concerns
+2. Trading readiness assessment
+3. One key question for self-reflection
 
-Remember to maintain the supportive but firm personality while calling out any rule violation risks.
+Keep it supportive and actionable, not overwhelming.
 `;
 
     return await this.callDeepseek(userId, prompt, 'deepseek-reasoner');

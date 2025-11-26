@@ -126,49 +126,56 @@
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth.js';
 import NewTradePlanModal from '../components/NewTradePlanModal.vue';
+import axios from 'axios';
 
 const authStore = useAuthStore();
 const showNewPlanModal = ref(false);
 
-// Mock data - will be replaced with actual API calls
-const currentPlans = ref([
-  {
-    id: 1,
-    symbol: 'BTC/USD',
-    status: 'planning',
-    direction: 'long',
-    probability: 75,
-    createdAt: new Date('2024-01-15')
-  },
-  {
-    id: 2,
-    symbol: 'ETH/USD',
-    status: 'analysis',
-    direction: 'short',
-    probability: 60,
-    createdAt: new Date('2024-01-14')
-  }
-]);
+// Real data from API
+const currentPlans = ref([]);
+const recentActivity = ref([]);
+const isLoading = ref(false);
 
-const recentActivity = ref([
-  {
-    id: 1,
-    icon: '📈',
-    text: 'Started analysis on BTC/USD',
-    time: '2 hours ago'
-  },
-  {
-    id: 2,
-    icon: '💭',
-    text: 'Completed emotional check for ETH trade',
-    time: '1 day ago'
+const loadOpenTradePlans = async () => {
+  isLoading.value = true;
+  try {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const response = await axios.get(`${apiBaseUrl}/api/trade-plans/open`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+    });
+    
+    console.log('Open trade plans response:', response.data);
+    
+    // Transform trade plan data to match the expected structure
+    currentPlans.value = response.data.map(plan => ({
+      id: plan._id,
+      symbol: plan.asset,
+      status: plan.status,
+      direction: plan.direction,
+      probability: 75, // Default probability for now
+      createdAt: plan.createdAt
+    }));
+    
+    // Generate recent activity from trade plans
+    recentActivity.value = response.data.slice(0, 3).map(plan => ({
+      id: plan._id,
+      icon: '📈',
+      text: `Started ${plan.direction} plan for ${plan.asset}`,
+      time: formatRelativeTime(plan.createdAt)
+    }));
+    
+  } catch (error) {
+    console.error('Error loading open trade plans:', error);
+  } finally {
+    isLoading.value = false;
   }
-]);
+};
 
 const handlePlanCreated = (planId) => {
   showNewPlanModal.value = false;
   console.log('Trade plan created:', planId);
-  // TODO: Refresh the current plans list
+  // Refresh the current plans list
+  loadOpenTradePlans();
 };
 
 const startNewPlan = () => {
@@ -194,6 +201,20 @@ const formatDate = (date) => {
   return new Date(date).toLocaleDateString();
 };
 
+const formatRelativeTime = (dateString) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  
+  return date.toLocaleDateString();
+};
+
 const handleLogout = async () => {
   try {
     await authStore.logout();
@@ -203,7 +224,7 @@ const handleLogout = async () => {
 };
 
 onMounted(() => {
-  // TODO: Load actual data from API
+  loadOpenTradePlans();
 });
 </script>
 

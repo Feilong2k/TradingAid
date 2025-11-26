@@ -100,8 +100,8 @@
           <div class="step-content">
             <div class="ai-analysis" v-if="aiAnalysis">
               <div class="ai-header">
-                <span class="ai-icon">🤖</span>
-                <h4>AI Analysis</h4>
+                <span class="ai-icon">👩‍💼</span>
+                <h4>Aria's Analysis</h4>
               </div>
               <div class="ai-content">
                 <p>{{ aiAnalysis }}</p>
@@ -331,8 +331,29 @@
       isLoading.value = true;
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
       
-      // Create trade plan
-      const response = await axios.post(`${apiBaseUrl}/api/trade-plans`, tradeSetup.value, {
+      // Create trade plan (normalize timeframe collection to a valid backend enum)
+      let timeframeNormalized = tradeSetup.value.timeframe;
+      const selectedCollection = timeframes.value.find(tf => tf.label === tradeSetup.value.timeframe);
+      if (selectedCollection && Array.isArray(selectedCollection.timeframes) && selectedCollection.timeframes.length > 0) {
+        // Take the first timeframe from the selected collection, e.g., 'H1' or 'M15'
+        const token = selectedCollection.timeframes[0];
+        const match = token.match(/^([MH])(\d+)$/i);
+        if (match) {
+          const unit = match[1].toUpperCase() === 'M' ? 'm' : 'h';
+          timeframeNormalized = `${match[2]}${unit}`; // e.g., '15m' or '1h'
+        }
+      } else if (/^[MH]\d+$/i.test(timeframeNormalized)) {
+        // If somehow the v-model captured a single token like 'M15' or 'H1', normalize it
+        const match = timeframeNormalized.match(/^([MH])(\d+)$/i);
+        const unit = match[1].toUpperCase() === 'M' ? 'm' : 'h';
+        timeframeNormalized = `${match[2]}${unit}`;
+      }
+      const payload = {
+        asset: tradeSetup.value.asset,
+        direction: tradeSetup.value.direction,
+        timeframe: timeframeNormalized
+      };
+      const response = await axios.post(`${apiBaseUrl}/api/trade-plans`, payload, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
       });
       

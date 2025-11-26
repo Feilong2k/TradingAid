@@ -20,6 +20,48 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+// Get open trade plans
+router.get('/open', authenticateToken, async (req, res) => {
+  try {
+    const openTradePlans = await TradePlan.find({ 
+      userId: req.user._id,
+      status: 'open'
+    }).sort({ createdAt: -1 });
+    
+    res.json(openTradePlans);
+  } catch (error) {
+    console.error('Error fetching open trade plans:', error);
+    res.status(500).json({ error: 'Failed to fetch open trade plans' });
+  }
+});
+
+// Get active trade plans for ActiveTrades page
+router.get('/active', authenticateToken, async (req, res) => {
+  try {
+    const activeTradePlans = await TradePlan.find({ 
+      userId: req.user._id,
+      status: { $in: ['open', 'emotional_check', 'technical_analysis', 'planning', 'monitoring'] }
+    }).sort({ createdAt: -1 });
+    
+    // Separate into open positions and monitoring opportunities
+    const openPositions = activeTradePlans.filter(plan => 
+      plan.status === 'entered'
+    );
+    
+    const monitoringOpportunities = activeTradePlans.filter(plan => 
+      ['open', 'emotional_check', 'technical_analysis', 'planning', 'monitoring'].includes(plan.status)
+    );
+    
+    res.json({
+      openPositions,
+      monitoringOpportunities
+    });
+  } catch (error) {
+    console.error('Error fetching active trade plans:', error);
+    res.status(500).json({ error: 'Failed to fetch active trade plans' });
+  }
+});
+
 // Create new trade plan
 router.post('/', authenticateToken, validateRequest(tradePlanSchema), async (req, res) => {
   try {
@@ -31,7 +73,7 @@ router.post('/', authenticateToken, validateRequest(tradePlanSchema), async (req
       direction,
       timeframe,
       emotionalState,
-      status: 'emotional_check'
+      status: 'open'
     });
     
     await tradePlan.save();
@@ -61,11 +103,32 @@ router.get('/today-trades', authenticateToken, async (req, res) => {
   }
 });
 
-// Analyze emotional state with AI
+// Analyze trading context and prompt for emotional check-in
 router.post('/:id/analyze-emotions', authenticateToken, async (req, res) => {
   try {
     const { emotionalData, todayTrades } = req.body;
     
+    // Get the trade plan to analyze context
+    const tradePlan = await TradePlan.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+    
+    if (!tradePlan) {
+      return res.status(404).json({ error: 'Trade plan not found' });
+    }
+    
+    // If no emotional state is selected yet, provide trading context check-in
+    if (!emotionalData.state) {
+      const aiAnalysis = await aiService.analyzeTradingContext(
+        req.user._id.toString(),
+        tradePlan,
+        todayTrades || []
+      );
+      return res.json({ aiAnalysis });
+    }
+    
+    // If emotional state is provided, analyze the questionnaire
     const aiAnalysis = await aiService.analyzeEmotionalQuestionnaire(
       req.user._id.toString(),
       {

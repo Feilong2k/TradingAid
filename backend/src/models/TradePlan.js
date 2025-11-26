@@ -50,8 +50,8 @@ const tradePlanSchema = new mongoose.Schema({
   // Workflow Status
   status: {
     type: String,
-    enum: ['emotional_check', 'technical_analysis', 'planning', 'monitoring', 'entered', 'completed', 'passed_over', 'cancelled'],
-    default: 'emotional_check'
+    enum: ['open', 'emotional_check', 'technical_analysis', 'planning', 'monitoring', 'entered', 'completed', 'passed_over', 'cancelled'],
+    default: 'open'
   },
   
   // Decision

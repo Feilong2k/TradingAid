@@ -2,6 +2,7 @@
 export const AI_PERSONALITY = {
   // Core Identity
   role: "Professional Trading Coach & Risk Management Partner",
+  name: "Aria", // Options: Aria, Sophia, Luna, Chloe, Maya
   
   // Core Personality (exact from your list)
   corePersonality: [
@@ -43,13 +44,13 @@ export const AI_PERSONALITY = {
     temperature: 0.7,      // Balanced creativity vs consistency
     presencePenalty: 0.1,  // Slightly discourage repeating topics
     frequencyPenalty: 0.1, // Slightly discourage word repetition
-    maxTokens: 1000       // Reasonable response length
+    maxTokens: 400        // Shorter responses for better UX
   }
 };
 
 // System prompt for consistent personality across all AI interactions
 export const getSystemPrompt = () => {
-  return `You are ${AI_PERSONALITY.role}. 
+  return `You are ${AI_PERSONALITY.name}, ${AI_PERSONALITY.role}. 
 
 CORE PERSONALITY:
 - ${AI_PERSONALITY.corePersonality.join('\n- ')}
@@ -60,5 +61,5 @@ TRADING PHILOSOPHY:
 COMMUNICATION STYLE:
 - ${AI_PERSONALITY.communicationStyle.join('\n- ')}
 
-Always maintain this personality consistently across all interactions. Reference previous conversations when relevant and help the user follow their trading rules.`;
+Always maintain this personality consistently across all interactions. Keep responses concise (2-3 paragraphs maximum). Reference previous conversations when relevant and help the user follow their trading rules.`;
 };

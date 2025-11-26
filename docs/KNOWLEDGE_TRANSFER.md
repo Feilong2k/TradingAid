@@ -161,83 +161,79 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 
 ## Recent Changes & Improvements
 
-### Asset Management & UI Enhancements (November 26, 2025)
+### Trade Plan Status Management & Active Trades Integration (November 26, 2025)
 
-#### 1. Autocomplete Asset Selection
+#### 1. Enhanced Trade Plan Status Workflow
+- **Status Enum Expanded**: Added 'open' status and set as default for new trade plans
+- **Immediate Visibility**: Trade plans now appear in Active Trades immediately after creation
+- **Status Transitions**: Clear workflow from 'open' → 'emotional_check' → decision-based statuses
+
+**Technical Implementation:**
+- **Backend**: Updated TradePlan model with new 'open' status enum value
+- **API Endpoints**: Created `/api/trade-plans/open` and `/api/trade-plans/active` endpoints
+- **Frontend Integration**: Real-time data loading in ActiveTrades.vue and TradePlanning.vue
+
+#### 2. Active Trades Page Real Data Integration
+- **Replaced Mock Data**: ActiveTrades.vue now fetches real trade plans from backend
+- **Data Transformation**: API response mapped to match existing UI structure
+- **Error Handling**: Comprehensive try-catch with user-friendly fallbacks
+
+**Implementation Lessons:**
+- **Data Mapping**: Transform backend data to match frontend expectations while maintaining separation of concerns
+- **API Integration**: Handle both development and production API base URLs consistently
+- **Error Recovery**: Graceful handling of API failures with console logging for debugging
+
+#### 3. Trade Planning Current Plans Pane
+- **Real-time Updates**: Current plans section shows open trade plans immediately
+- **Activity Generation**: Recent activity dynamically generated from trade plan data
+- **Auto-refresh**: Plans list refreshes automatically after new plan creation
+
+### Implementation Lessons & Best Practices
+
+#### Backend Development
+- **Status Management**: Always update status enums in both model definition and existing data
+- **API Design**: Create specific endpoints for different use cases (open vs active trade plans)
+- **Data Separation**: Structure API responses to match frontend component needs
+
+#### Frontend Development
+- **Data Loading**: Implement loading states and error handling for all API calls
+- **Reactive Updates**: Use Vue's reactivity system to automatically update UI when data changes
+- **Component Communication**: Properly emit events from child components and handle in parent
+
+#### Common Implementation Mistakes & Solutions
+1. **Duplicate Variable Declarations**: 
+   - **Mistake**: Declaring `recentActivity` twice in TradePlanning.vue
+   - **Solution**: Remove duplicate declarations and ensure single source of truth
+
+2. **Missing Helper Functions**:
+   - **Mistake**: Calling `formatRelativeTime` before it was defined
+   - **Solution**: Define helper functions before they're used in data processing
+
+3. **API Integration Issues**:
+   - **Mistake**: Hardcoded API URLs that break in different environments
+   - **Solution**: Use environment variables for API base URLs
+
+### Asset Management & UI Enhancements (Previous Implementation)
+
+#### Autocomplete Asset Selection
 - **Feature**: Replaced dropdown with typeahead autocomplete component
 - **Functionality**: Users can type and select from suggestions that pop up
 - **Real-time Filtering**: Instantly filters assets as user types
-- **User Experience**: 
-  - Clean dropdown suggestions with hover effects
-  - Shows selected asset below input field
-  - Maintains "Add Asset" button for new assets
-  - Responsive design for mobile devices
 
-**Technical Implementation:**
-- **Frontend**: Custom Vue.js autocomplete component in `NewTradePlanModal.vue`
-- **Reactive Data**: Asset search, filtered assets, suggestion visibility
-- **Methods**: `filterAssets()`, `selectAsset()`, `hideSuggestions()`
-- **Styling**: Professional dropdown with shadows and hover effects
-
-#### 2. Emotions Reset Endpoint
+#### Emotions Reset Endpoint
 - **Feature**: REST API endpoint to restore original emotions configuration
 - **Security**: Requires JWT authentication
-- **Preservation**: All other configurations (assets, timeframes, body_signals) remain unchanged
-- **Endpoint**: `POST /api/config/reset/emotions`
+- **Preservation**: All other configurations remain unchanged
 
-**Original Emotions Restored:**
-- **3 Positive Emotions**: Calm, Focused, Confident
-- **12 Negative Emotions**: Anxious, Rushed, Fearful, Hopeful, Excited, Greedy, Irritated, Frustrated, Angry, Disappointed, Regretful, Ashamed
-
-**Technical Implementation:**
-- **Backend Route**: Added to `backend/src/routes/configurations.js`
-- **Database**: MongoDB atomic update operation
-- **Error Handling**: Comprehensive logging and error responses
-
-### Seed Script Fix & Configuration Reliability (November 26, 2025)
+### Seed Script Fix & Configuration Reliability
 - **Problem Identified**: Previous seed script used native MongoDB driver which bypassed Mongoose validation
 - **Solution**: Updated to use proper Mongoose Configuration model with full ES6 imports
 - **Data Integrity**: Complete configuration data with proper structure and validation
-- **Connection Management**: Optimized mongoose connection with 30s server timeout, 45s socket timeout
 
-**Configuration Types:**
-- **Assets**: 6 predefined trading instruments (BTC, NQ, GBPUSD, USDJPY, GOLD, JP225) with dynamic addition capability
-- **Timeframe Collections**: 
-  - M15, M5, M1 (Short-term analysis)
-  - H1, M15, M5 (Medium-term analysis) 
-  - H4, H1, M15 (Long-term analysis)
-- **Emotional States**: 15 emotions (3 positive, 12 negative) with proper categorization
-- **Body Signals**: 19 physical sensation signals across 5 categories (stress, FOMO, anger, fear, greed)
-
-**Technical Improvements:**
-- **Mongoose Integration**: Proper use of `Configuration.insertMany()` instead of raw MongoDB operations
-- **Complete Data**: All 4 configuration types fully populated with validated structure
-- **Error Handling**: Comprehensive try-catch with proper exit codes and logging
-- **Module Structure**: Clean ES6 imports with proper file paths
-- **Connection Options**: Server selection timeout (30s), socket timeout (45s), connection pooling (max 10)
-
-**Usage:**
-```bash
-cd backend
-node src/utils/seedConfigurations.js
-```
-
-This reliably resets all configurations to their original validated state.
-
-### Security Enhancements (Commit: `ffaa04e`)
+### Security Enhancements
 - Added comprehensive input validation with Joi
 - Created validation middleware for all critical endpoints
 - Fixed OAuth callback security issue
-- Updated frontend auth store for new response format
-
-### OAuth Flow Fix (Commit: `0406ab2`)
-- Fixed validation regex to accept legitimate Google authorization codes
-- Added `/` and `+` characters to allowed pattern
-
-### Redirect Flow Restoration (Commit: `90134b7`)
-- Restored OAuth redirect flow for frontend compatibility
-- Maintained security improvements while fixing login redirect
-- Frontend now properly receives token via URL parameters
 
 ---
 
