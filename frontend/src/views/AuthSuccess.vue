@@ -32,21 +32,21 @@ onMounted(async () => {
       // Store the token
       authStore.token = token;
       localStorage.setItem('auth_token', token);
-      
+
       // Parse and store user data
       authStore.user = JSON.parse(userData);
-      
+
       console.log('Token stored, starting activity tracking...');
 
       // Start activity tracking
       if (authStore.startActivityTracking) {
         authStore.startActivityTracking();
       }
-      
-      console.log('Redirecting to dashboard...');
 
-      // Redirect to dashboard
-      router.push('/dashboard');
+      console.log('Redirecting to trade planning...');
+
+      // Redirect to trade planning instead of dashboard
+      router.push('/planning');
     } else {
       throw new Error('Missing authentication data');
     }
@@ -112,3 +112,4 @@ onMounted(async () => {
   border-radius: 4px;
 }
 </style>
+
