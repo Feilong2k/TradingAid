@@ -19,7 +19,6 @@ const chatMessageSchema = new mongoose.Schema({
 const emotionalStateSchema = new mongoose.Schema({
   state: {
     type: String,
-    enum: ['calm', 'confident', 'anxious', 'fearful', 'greedy', 'frustrated', 'impatient', 'disciplined'],
     required: true
   },
   bodySignals: [{

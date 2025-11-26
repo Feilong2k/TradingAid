@@ -2,7 +2,7 @@ import express from 'express';
 import TradePlan from '../models/TradePlan.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { aiService } from '../services/aiService.js';
-import { validateRequest, tradePlanSchema, tradePlanUpdateSchema } from '../middleware/validation.js';
+import { validateRequest, tradePlanSchema, tradePlanUpdateSchema, emotionalStateUpdateSchema, decisionUpdateSchema } from '../middleware/validation.js';
 
 const router = express.Router();
 
@@ -40,7 +40,7 @@ router.get('/active', authenticateToken, async (req, res) => {
   try {
     const activeTradePlans = await TradePlan.find({ 
       userId: req.user._id,
-      status: { $in: ['open', 'emotional_check', 'technical_analysis', 'planning', 'monitoring'] }
+      status: { $in: ['open', 'emotional_check', 'technical_analysis', 'planning', 'monitoring', 'entered'] }
     }).sort({ createdAt: -1 });
     
     // Separate into open positions and monitoring opportunities
@@ -67,11 +67,21 @@ router.post('/', authenticateToken, validateRequest(tradePlanSchema), async (req
   try {
     const { asset, direction, timeframe, emotionalState } = req.body;
     
+    // Normalize timeframe if it comes in M/H format (e.g., M15 -> 15m, H1 -> 1h)
+    let normalizedTimeframe = timeframe;
+    if (/^[MH]\d+$/i.test(timeframe)) {
+      const match = timeframe.match(/^([MH])(\d+)$/i);
+      if (match) {
+        const unit = match[1].toUpperCase() === 'M' ? 'm' : 'h';
+        normalizedTimeframe = `${match[2]}${unit}`;
+      }
+    }
+    
     const tradePlan = new TradePlan({
       userId: req.user._id,
       asset,
       direction,
-      timeframe,
+      timeframe: normalizedTimeframe,
       emotionalState,
       status: 'open'
     });
@@ -200,7 +210,7 @@ router.post('/:id/chat', authenticateToken, async (req, res) => {
 });
 
 // Update emotional state
-router.patch('/:id/emotional-state', authenticateToken, async (req, res) => {
+router.patch('/:id/emotional-state', authenticateToken, validateRequest(emotionalStateUpdateSchema), async (req, res) => {
   try {
     const { emotionalState } = req.body;
     
@@ -225,7 +235,7 @@ router.patch('/:id/emotional-state', authenticateToken, async (req, res) => {
 });
 
 // Update decision
-router.patch('/:id/decision', authenticateToken, async (req, res) => {
+router.patch('/:id/decision', authenticateToken, validateRequest(decisionUpdateSchema), async (req, res) => {
   try {
     const { decision } = req.body;
     

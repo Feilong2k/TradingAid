@@ -52,7 +52,7 @@ const tradePlanUpdateSchema = Joi.object({
   direction: Joi.string().valid('long', 'short').optional(),
   timeframe: Joi.string().valid('1m', '5m', '15m', '1h', '4h', '1d', '1w').optional(),
   emotionalState: Joi.object({
-    state: Joi.string().valid('calm', 'confident', 'anxious', 'fearful', 'greedy', 'frustrated', 'impatient', 'disciplined').required(),
+    state: Joi.string().required(),
     bodySignals: Joi.array().items(
       Joi.object({
         signal: Joi.string().max(100),
@@ -65,6 +65,25 @@ const tradePlanUpdateSchema = Joi.object({
   status: Joi.string().valid('emotional_check', 'technical_analysis', 'planning', 'monitoring', 'entered', 'completed', 'passed_over', 'cancelled').optional(),
   decision: Joi.string().valid('proceed', 'proceed_caution', 'take_break', 'reconsider', 'passed').optional()
 }).min(1); // At least one field must be provided
+
+// Validation schema for emotional state update
+const emotionalStateUpdateSchema = Joi.object({
+  emotionalState: Joi.object({
+    state: Joi.string().required(),
+    bodySignals: Joi.array().items(
+      Joi.object({
+        signal: Joi.string().max(100),
+        intensity: Joi.number().min(1).max(10)
+      })
+    ).max(10),
+    notes: Joi.string().max(500).allow('', null)
+  }).required()
+});
+
+// Validation schema for decision update
+const decisionUpdateSchema = Joi.object({
+  decision: Joi.string().valid('proceed', 'proceed_caution', 'take_break', 'reconsider', 'passed').required()
+});
 
 // Validation middleware
 export const validateRequest = (schema, property = 'body') => {
@@ -114,5 +133,7 @@ export const validateQuery = (schema) => {
 export {
   oauthCallbackSchema,
   tradePlanSchema,
-  tradePlanUpdateSchema
+  tradePlanUpdateSchema,
+  emotionalStateUpdateSchema,
+  decisionUpdateSchema
 };

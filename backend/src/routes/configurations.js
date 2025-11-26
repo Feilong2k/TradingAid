@@ -1,6 +1,6 @@
 import express from 'express';
 import Configuration from '../models/Configuration.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -54,8 +54,8 @@ router.get('/:type', async (req, res) => {
   }
 });
 
-// Add new asset to assets configuration (requires authentication)
-router.post("/assets", authenticateToken, async (req, res) => {
+// Add new asset to assets configuration (requires admin)
+router.post("/assets", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { asset } = req.body;
 
@@ -128,8 +128,8 @@ router.post("/assets", authenticateToken, async (req, res) => {
 });
 
 
-// Reset emotions configuration to original seed data
-router.post("/reset/emotions", authenticateToken, async (req, res) => {
+// Reset emotions configuration to original seed data (requires admin)
+router.post("/reset/emotions", authenticateToken, requireAdmin, async (req, res) => {
   try {
     console.log("🔄 Resetting emotions configuration to original seed data...");
 

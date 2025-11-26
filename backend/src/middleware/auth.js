@@ -33,3 +33,24 @@ export const optionalAuth = async (req, res, next) => {
     next();
   }
 };
+
+// Admin middleware - checks if user is in the admin list
+export const requireAdmin = (req, res, next) => {
+  // Get admin emails from environment variable (comma-separated)
+  const adminEmails = process.env.ADMIN_EMAILS ? 
+    process.env.ADMIN_EMAILS.split(',').map(email => email.trim()) : 
+    [];
+  
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  if (!adminEmails.includes(req.user.email)) {
+    return res.status(403).json({ 
+      error: 'Admin access required',
+      message: 'You do not have permission to perform this action' 
+    });
+  }
+  
+  next();
+};

@@ -738,32 +738,36 @@
     border-radius: 16px;
     padding: 0;
     max-width: 95vw;
-    width: 1100px;
+    width: 1200px;
     max-height: 90vh;
-    height: 650px;
-    overflow: auto;
-    resize: both;
+    height: 700px;
+    overflow: hidden;
     position: relative;
-    min-width: 800px;
-    min-height: 500px;
+    min-width: 900px;
+    min-height: 550px;
+    display: flex;
+    flex-direction: column;
+    resize: both;
   }
 
-  /* Resize handle styling */
+  /* Improved resize handle styling */
   .modal-content::after {
     content: '';
     position: absolute;
     bottom: 5px;
     right: 5px;
-    width: 15px;
-    height: 15px;
+    width: 20px;
+    height: 20px;
     background: linear-gradient(135deg, transparent 50%, #6c757d 50%);
     cursor: se-resize;
-    opacity: 0.5;
+    opacity: 0.7;
     transition: opacity 0.2s ease;
+    border-radius: 2px;
   }
 
   .modal-content:hover::after {
     opacity: 1;
+    background: linear-gradient(135deg, transparent 50%, #495057 50%);
   }
 
   .modal-content.small {
@@ -930,7 +934,7 @@
   /* Emotional Check Container - Two Column Layout */
   .emotional-check-container {
     display: grid;
-    grid-template-columns: 1fr 400px;
+    grid-template-columns: 1fr 450px;
     gap: 0;
     height: 650px;
   }
