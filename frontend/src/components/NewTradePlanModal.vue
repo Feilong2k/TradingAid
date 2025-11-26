@@ -46,13 +46,16 @@
             </div>
   
             <div class="form-group">
-              <label>Timeframe</label>
+              <label>Timeframe Collection</label>
               <select v-model="tradeSetup.timeframe" class="form-select">
-                <option value="">Select Timeframe</option>
-                <option v-for="tf in timeframes" :key="tf" :value="tf">
-                  {{ tf }}
+                <option value="">Select Timeframe Collection</option>
+                <option v-for="tf in timeframes" :key="tf.label" :value="tf.label">
+                  {{ tf.label }} - {{ tf.description }}
                 </option>
               </select>
+              <div v-if="tradeSetup.timeframe" class="timeframe-details">
+                <small>Selected timeframes: {{ getSelectedTimeframes(tradeSetup.timeframe) }}</small>
+              </div>
             </div>
   
             <div class="modal-actions">
@@ -211,29 +214,11 @@
   const aiAnalysis = ref('');
   const isLoading = ref(false);
   
-  // Available data (you can provide your lists)
-  const availableAssets = ref([
-    'BTC/USD', 'ETH/USD', 'AAPL', 'TSLA', 'SPY', 'QQQ',
-    'EUR/USD', 'GBP/USD', 'USD/JPY', 'XAU/USD'
-  ]);
-  
-  const timeframes = ref(['1m', '5m', '15m', '1h', '4h', '1d', '1w']);
-  
-  const emotionalStates = ref([
-    { value: 'calm', label: 'Calm & Focused', icon: '😌', type: 'positive' },
-    { value: 'confident', label: 'Confident', icon: '💪', type: 'positive' },
-    { value: 'disciplined', label: 'Disciplined', icon: '🎯', type: 'positive' },
-    { value: 'anxious', label: 'Anxious', icon: '😰', type: 'negative' },
-    { value: 'fearful', label: 'Fearful', icon: '😨', type: 'negative' },
-    { value: 'greedy', label: 'Greedy', icon: '💰', type: 'negative' },
-    { value: 'frustrated', label: 'Frustrated', icon: '😠', type: 'negative' },
-    { value: 'impatient', label: 'Impatient', icon: '⏰', type: 'negative' }
-  ]);
-  
-  const bodySignals = ref([
-    'Tense shoulders', 'Racing heart', 'Shallow breathing', 'Sweaty palms',
-    'Butterflies in stomach', 'Jaw clenching', 'Restless legs', 'Headache'
-  ]);
+  // Configuration data from API
+  const availableAssets = ref([]);
+  const timeframes = ref([]);
+  const emotionalStates = ref([]);
+  const bodySignals = ref([]);
   
   const tradeSetup = ref({
     asset: '',
@@ -369,9 +354,75 @@
     }
   };
   
+  // Load configurations from API
+  const loadConfigurations = async () => {
+    try {
+      console.log('🚀 Starting configuration loading...');
+      console.log('API URL:', '/api/config');
+      
+      // Remove auth headers since we made the API public
+      const response = await axios.get('/api/config');
+      
+      console.log('✅ Configuration API response received:', response.data);
+      console.log('Response keys:', Object.keys(response.data));
+      
+      const config = response.data;
+      
+      // Debug each config type
+      console.log('assets in config:', config.assets);
+      console.log('timeframes in config:', config.timeframes);
+      console.log('emotions in config:', config.emotions);
+      console.log('body_signals in config:', config.body_signals);
+      
+      // Set assets and timeframes
+      availableAssets.value = config.assets || [];
+      timeframes.value = config.timeframes || [];
+      emotionalStates.value = config.emotions || [];
+      bodySignals.value = (config.body_signals || []).map(item => item.signal);
+      
+      console.log('📊 Final loaded data:');
+      console.log('Available assets:', availableAssets.value);
+      console.log('Available timeframes:', timeframes.value);
+      console.log('Emotional states count:', emotionalStates.value.length);
+      console.log('Body signals count:', bodySignals.value.length);
+      
+      // Check if dropdowns should have options
+      console.log('Asset dropdown will show options:', availableAssets.value.length > 0);
+      console.log('Timeframe dropdown will show options:', timeframes.value.length > 0);
+      
+    } catch (error) {
+      console.error('❌ Error loading configurations:', error);
+      console.log('Using fallback configuration data');
+      
+      // Fallback to default values if API fails
+      availableAssets.value = ['BTC', 'NQ', 'GBPUSD', 'USDJPY', 'GOLD', 'JP225'];
+      timeframes.value = ['M15', 'M5', 'M1', 'H1', 'M3', 'H4'];
+      emotionalStates.value = [
+        { value: 'calm', label: 'Calm', type: 'positive' },
+        { value: 'focused', label: 'Focused', type: 'positive' },
+        { value: 'confident', label: 'Confident', type: 'positive' },
+        { value: 'anxious', label: 'Anxious', type: 'negative' },
+        { value: 'rushed', label: 'Rushed', type: 'negative' },
+        { value: 'fearful', label: 'Fearful', type: 'negative' }
+      ];
+      bodySignals.value = ['Tight shoulders, neck jaw', 'Clenched fists or teeth'];
+      
+      console.log('Fallback assets:', availableAssets.value);
+      console.log('Fallback timeframes:', timeframes.value);
+    }
+  };
+
+  // Helper function to get selected timeframes
+  const getSelectedTimeframes = (selectedLabel) => {
+    const selectedCollection = timeframes.value.find(tf => tf.label === selectedLabel);
+    return selectedCollection ? selectedCollection.timeframes.join(', ') : '';
+  };
+
   onMounted(() => {
     // Initialize with one body signal
     emotionalState.value.bodySignals = [{ signal: '', intensity: 5 }];
+    // Load configurations from API
+    loadConfigurations();
   });
   </script>
   

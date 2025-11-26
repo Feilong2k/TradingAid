@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./src/routes/auth.js";
 import tradePlanRoutes from "./src/routes/tradePlans.js";
+import configurationRoutes from "./src/routes/configurations.js";
 
 // Load environment variables
 dotenv.config();
@@ -53,6 +54,7 @@ connectWithRetry();
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api/trade-plans', tradePlanRoutes);
+app.use('/api/config', configurationRoutes);
 
 // Basic route
 app.get("/", (req, res) => {

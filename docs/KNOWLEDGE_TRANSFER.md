@@ -161,6 +161,26 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 
 ## Recent Changes & Improvements
 
+### Dynamic Configuration System (November 26, 2025)
+- **Added Configuration Model**: Centralized configuration management in MongoDB
+- **Timeframe Collections**: Implemented multi-timeframe analysis sets instead of individual timeframes
+- **Native MongoDB Driver**: Fixed seed script to use direct MongoDB insertion for reliability
+- **Public Configuration API**: Created `/api/config` endpoint for frontend configuration loading
+
+**Configuration Types:**
+- **Assets**: 6 predefined trading instruments (BTC, NQ, GBPUSD, USDJPY, GOLD, JP225)
+- **Timeframe Collections**: 
+  - M15, M5, M1 (Short-term analysis)
+  - H1, M15, M5 (Medium-term analysis) 
+  - H4, H1, M15 (Long-term analysis)
+- **Emotional States**: 15 emotions with positive/negative categorization
+- **Body Signals**: 19 physical sensation signals across stress, FOMO, anger, fear, and greed
+
+**Technical Fix:**
+- Fixed seed script to use native MongoDB driver instead of mongoose models
+- Added comprehensive debugging and error handling
+- Ensured all configurations include `isActive: true` field for API filtering
+
 ### Security Enhancements (Commit: `ffaa04e`)
 - Added comprehensive input validation with Joi
 - Created validation middleware for all critical endpoints

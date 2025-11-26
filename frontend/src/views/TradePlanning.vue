@@ -40,7 +40,7 @@
 
         <!-- Quick Actions -->
         <div class="quick-actions">
-          <button @click="startNewPlan" class="action-btn primary">
+          <button @click="showNewPlanModal = true" class="action-btn primary">
             <span class="action-icon">➕</span>
             Start New Trade Plan
           </button>
@@ -49,6 +49,13 @@
             View Opportunities
           </button>
         </div>
+
+        <!-- New Trade Plan Modal -->
+        <NewTradePlanModal 
+          v-if="showNewPlanModal"
+          @close="showNewPlanModal = false"
+          @plan-created="handlePlanCreated"
+        />
 
         <!-- Current Plans Section -->
         <div class="section">
@@ -118,8 +125,10 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth.js';
+import NewTradePlanModal from '../components/NewTradePlanModal.vue';
 
 const authStore = useAuthStore();
+const showNewPlanModal = ref(false);
 
 // Mock data - will be replaced with actual API calls
 const currentPlans = ref([
@@ -156,9 +165,14 @@ const recentActivity = ref([
   }
 ]);
 
+const handlePlanCreated = (planId) => {
+  showNewPlanModal.value = false;
+  console.log('Trade plan created:', planId);
+  // TODO: Refresh the current plans list
+};
+
 const startNewPlan = () => {
-  // TODO: Navigate to new plan creation
-  console.log('Starting new trade plan');
+  showNewPlanModal.value = true;
 };
 
 const viewOpportunities = () => {
