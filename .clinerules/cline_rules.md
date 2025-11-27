@@ -3,10 +3,40 @@
 ## Project Rules for AI Assistant
 
 ### Documentation Rules
-- **Post-Push Documentation**: Do NOT update `docs/KNOWLEDGE_TRANSFER.md` or `docs/TRADING_PLAN_MODAL_DEVELOPMENT_PLAN.md` during feature implementation
-- **Documentation Workflow**: Only update documentation files AFTER code changes have been committed and pushed to remote repository
-- **Separate Commits**: Documentation updates must be in separate commits from code changes
+- **Pre-Commit Documentation**: Update `docs/KNOWLEDGE_TRANSFER.md` or `docs/TRADING_PLAN_MODAL_DEVELOPMENT_PLAN.md` BEFORE committing code changes
+- **Documentation Workflow**: Documentation files must be updated before code changes are committed to ensure documentation reflects implementation
+- **Combined Commits**: Documentation updates should be included in the same commit as code changes when they directly relate
 - **Reference Implementation**: Documentation should reflect what was actually implemented, not planned changes
+- **Mandatory Updates**: Documentation MUST be updated for every feature implementation or bug fix
+- **Verification Step**: Always verify documentation is updated before committing code changes
+
+### Documentation Update Workflow
+1. **Implement Code Changes**: Complete all code modifications and testing
+2. **Update Documentation**: Update documentation files to reflect implemented changes
+3. **Commit Code and Documentation**: Use conventional commit format, including documentation updates in the same commit
+4. **Push to Remote**: Push combined code and documentation changes to remote repository
+5. **Verify Implementation**: Ensure documentation accurately reflects the code implementation
+
+### Cline Workflow Enforcement (Assistant Behavior)
+- **Docs Gate**: The assistant MUST NOT use attempt_completion until:
+  1) Documentation files are updated to reflect code changes
+  2) Code changes and documentation updates are committed together
+  3) Combined commit is pushed to remote repository
+  4) Git history shows documentation is included with implementation
+- **Commit Hygiene**:
+  - Use conventional commits for code changes (e.g., `feat:`, `fix:`, `refactor:`)
+  - Include documentation updates in the same commit as code changes
+- **Verification Step**:
+  - Before committing, verify documentation files are updated
+  - Ensure commit message describes both code and documentation changes
+- **Scope of Docs Updates**:
+  - Update `docs/KNOWLEDGE_TRANSFER.md` and/or `docs/TRADING_PLAN_MODAL_DEVELOPMENT_PLAN.md` to reflect actual implemented changes
+  - Do not include planned but unimplemented work
+- **Combined Commits**:
+  - Documentation updates should be included with code changes in single commits
+  - No separate documentation-only commits for implementation-related changes
+- **Auto-reminder**:
+  - Before any commit, ensure documentation is updated to reflect changes
 
 ### Code Structure Rules
 - **Respect Architecture**: Maintain clear separation between backend (Node.js/Express) and frontend (Vue 3)
@@ -17,9 +47,9 @@
 
 ### Development Process Rules
 - **Read Before Writing**: Always review relevant documentation sections before making changes
-- **Test Before Docs**: Implement and test code changes before updating documentation
+- **Test Before Commit**: Implement and test code changes before committing
 - **Git Hygiene**: Use conventional commit format and ensure clean commit history
-- **Push First**: Always push code changes before updating documentation files
+- **Documentation First**: Always update documentation before committing code changes
 
 ### File Organization Rules
 - **Backend Structure**: Keep backend code in `backend/src/` with proper separation (routes, models, services, middleware)
