@@ -1,3 +1,36 @@
+## Update - November 27, 2025 — MT5 API key → User mapping for EA posts
+
+Backend
+- Added ApiKey model: backend/src/models/ApiKey.js
+- POST /api/trade-logs now binds EA posts to a user in this order:
+  1) JWT (req.user._id) if present
+  2) ApiKey mapping lookup (apiKey → userId) via ApiKey collection
+  3) Dev-only fallback: if NODE_ENV !== 'production' and apiKey === MT5_API_KEY then userId = DEFAULT_USER_ID
+- Seed/Provisioning:
+  - Script: npm --prefix backend run seed:apikey
+  - Requires env vars: MT5_API_KEY and DEFAULT_USER_ID
+  - Upserts mapping for MT5_API_KEY → DEFAULT_USER_ID with label "MT5 EA (env)"
+- Files changed:
+  - backend/src/routes/tradeLogs.js (user resolution + mapping)
+  - backend/src/models/ApiKey.js (new)
+  - backend/src/utils/seedApiKey.js (new)
+  - backend/package.json (script "seed:apikey")
+
+Setup Steps (link EA to your TradeAid user)
+1) Determine your User._id in MongoDB (from your authenticated account)
+2) Set DEFAULT_USER_ID in backend/.env to that value
+3) Ensure MT5_API_KEY in backend/.env matches the apiKey configured in MT5_TradeAid_EA.mq5
+4) Run: npm --prefix backend run seed:apikey
+5) Restart backend: npm --prefix backend run dev
+6) Make a trade (or run node test-mt5-integration.js); verify it appears at /logs while logged in as that user
+
+Security Notes
+- In production, disable the dev fallback (set NODE_ENV=production) so only ApiKey mappings are accepted
+- Rotate MT5_API_KEY on compromise and update the ApiKey document accordingly
+- Consider per-account ApiKeys when multiple traders use the system
+
+No EA changes required: MT5 EA continues to send apiKey with the payload.
+
 ## Update - November 27, 2025 — Trade Logs page and "Journal History" rename
 
 Frontend
