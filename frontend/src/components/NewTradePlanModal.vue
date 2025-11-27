@@ -108,7 +108,8 @@
                   <span class="avatar-name">Aria</span>
                 </div>
                 <div class="chat-status">
-                  <span v-if="ariaTyping" class="typing-indicator">Aria is typing...</span>
+                  <span v-if="isThinking" class="typing-indicator">Aria is thinking: {{ currentThinkingStep }}</span>
+                  <span v-else-if="ariaTyping" class="typing-indicator">Aria is typing...</span>
                 </div>
               </div>
               
@@ -299,6 +300,15 @@
   const userMessage = ref('');
   const chatMessages = ref(null);
 
+  // Thinking indicator state
+  const isThinking = ref(false);
+  const thinkingSteps = ref([
+    'Reviewing your emotional state…',
+    "Checking today's trading context…",
+    'Formulating a supportive response…'
+  ]);
+  const currentThinkingStep = ref('');
+
   // Configuration data from API
   const availableAssets = ref([]);
   const timeframes = ref([]);
@@ -476,18 +486,48 @@
   };
 
   const addAriaMessage = async (content) => {
+    // Thinking phase: cycle through brief steps
+    isThinking.value = true;
+    let stepIndex = 0;
+    currentThinkingStep.value = thinkingSteps.value[stepIndex];
+    const stepTimer = setInterval(() => {
+      stepIndex = (stepIndex + 1) % thinkingSteps.value.length;
+      currentThinkingStep.value = thinkingSteps.value[stepIndex];
+    }, 900);
+
+    // Simulate initial thinking delay
+    await new Promise(resolve => setTimeout(resolve, 1200));
+
+    // End thinking, begin typing
+    clearInterval(stepTimer);
+    isThinking.value = false;
     ariaTyping.value = true;
-    
-    // Simulate typing delay for better UX
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-    
-    conversation.value.push({
-      id: messageIdCounter++,
+
+    // Create message with empty content first
+    const messageId = messageIdCounter++;
+    const newMessage = {
+      id: messageId,
       role: 'assistant',
-      content: content,
+      content: '',
       timestamp: new Date()
-    });
-    
+    };
+    conversation.value.push(newMessage);
+    scrollToBottom();
+
+    // Type out the content character by character for streaming effect
+    let currentIndex = 0;
+    while (currentIndex < content.length) {
+      newMessage.content += content.charAt(currentIndex);
+      currentIndex++;
+      scrollToBottom();
+
+      // Random typing speed for more natural feel (28-70ms per character)
+      const typingSpeed = 28 + Math.random() * 42;
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise(resolve => setTimeout(resolve, typingSpeed));
+    }
+
+    // Finished typing
     ariaTyping.value = false;
     scrollToBottom();
   };
@@ -535,29 +575,49 @@
       // Create trade plan (normalize timeframe collection to a valid backend enum)
       let timeframeNormalized = tradeSetup.value.timeframe;
       const selectedCollection = timeframes.value.find(tf => tf.label === tradeSetup.value.timeframe);
+      
+      console.log('Selected timeframe collection:', selectedCollection);
+      console.log('Original timeframe:', tradeSetup.value.timeframe);
+      
       if (selectedCollection && Array.isArray(selectedCollection.timeframes) && selectedCollection.timeframes.length > 0) {
         // Take the first timeframe from the selected collection, e.g., 'H1' or 'M15'
         const token = selectedCollection.timeframes[0];
+        console.log('First timeframe token:', token);
+        
         const match = token.match(/^([MH])(\d+)$/i);
         if (match) {
           const unit = match[1].toUpperCase() === 'M' ? 'm' : 'h';
           timeframeNormalized = `${match[2]}${unit}`; // e.g., '15m' or '1h'
+          console.log('Normalized timeframe:', timeframeNormalized);
+        } else {
+          // If the token is already in the correct format, use it directly
+          timeframeNormalized = token.toLowerCase();
+          console.log('Using timeframe directly:', timeframeNormalized);
         }
       } else if (/^[MH]\d+$/i.test(timeframeNormalized)) {
         // If somehow the v-model captured a single token like 'M15' or 'H1', normalize it
         const match = timeframeNormalized.match(/^([MH])(\d+)$/i);
-        const unit = match[1].toUpperCase() === 'M' ? 'm' : 'h';
-        timeframeNormalized = `${match[2]}${unit}`;
+        if (match) {
+          const unit = match[1].toUpperCase() === 'M' ? 'm' : 'h';
+          timeframeNormalized = `${match[2]}${unit}`;
+        }
       }
+      
+      console.log('Final timeframe to send:', timeframeNormalized);
+      
       const payload = {
         asset: tradeSetup.value.asset,
         direction: tradeSetup.value.direction,
         timeframe: timeframeNormalized
       };
+      
+      console.log('Sending payload:', payload);
+      
       const response = await axios.post(`${apiBaseUrl}/api/trade-plans`, payload, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
       });
       
+      console.log('Trade plan created successfully:', response.data);
       currentTradePlanId.value = response.data._id;
       
       // Switch to emotional check immediately
@@ -567,6 +627,8 @@
       const todayTradesResponse = await axios.get(`${apiBaseUrl}/api/trade-plans/today-trades`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
       });
+      
+      console.log('Today trades response:', todayTradesResponse.data);
       
       // Get initial AI message in background
       setTimeout(async () => {
@@ -593,7 +655,15 @@
         url: error?.config?.url,
         payload: error?.config?.data
       });
-      alert('Failed to create trade plan. Please try again.');
+      
+      // More specific error message based on the error type
+      if (error?.response?.status === 400) {
+        alert('Invalid trade plan data. Please check your inputs and try again.');
+      } else if (error?.response?.status === 404) {
+        alert('Unable to create trade plan. Please check your connection and try again.');
+      } else {
+        alert('Failed to create trade plan. Please try again.');
+      }
     } finally {
       isLoading.value = false;
     }

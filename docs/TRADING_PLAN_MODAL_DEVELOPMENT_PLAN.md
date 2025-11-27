@@ -18,6 +18,10 @@ This document outlines the detailed development plan for enhancing the trading p
 - ✅ **Fixed 400 errors** - Timeframe normalization and validation improvements
 - ✅ **Enhanced AI responses** - Shorter, more focused analysis (2-3 paragraphs max)
 - ✅ **Enhanced Asset Autocomplete** - Immediate dropdown on focus with arrow key navigation
+- ✅ **Improved Modal Behavior** - Only closes on X button click, not overlay click
+- ✅ **Instant Emotional Check** - Appears immediately without waiting for AI analysis
+- ✅ **Enhanced Modal Height** - Increased from 700px to 800px for better chat visibility
+- ✅ **Explicit Emotional Submission** - Submit button instead of auto-sending emotional data
 
 ### Missing Features to Implement
 1. **Context-aware AI behavior** (first trade, winning/losing streaks)
@@ -590,3 +594,36 @@ Please provide emotional guidance and trading insights based on both the current
 - Positive user feedback on AI guidance quality
 
 This development plan ensures that the existing AI personality is fully leveraged while adding the sophisticated emotional monitoring and context-aware features requested.
+
+---
+
+## Update - November 27, 2025
+
+### Implemented
+- Chat UX
+  - Streaming-style replies (frontend simulation): Assistant messages type out character-by-character for a ChatGPT-like experience
+  - Thinking process indicator: Rotating short status in chat header (“Reviewing your emotional state…”, “Checking today’s trading context…”, “Formulating a supportive response…”)
+- Backend chat flow
+  - Non-blocking chat endpoint: Returns AI response immediately and saves assistant message asynchronously to keep UI responsive
+  - Response quality guard: Appends a gentle follow-up when the model returns very short content
+  - Route ordering fix: Moved `/today-trades` above `/:id` to avoid parameter route capturing
+- Model
+  - `chatMessageSchema.content` default set to '' to avoid validation errors during streaming-style UI updates
+- Trade Plan Details
+  - Emotional check summary: Displays current emotion, body signals with intensity, optional notes, and Aria’s analysis
+
+### Immediate Next Work
+1. True server-driven streaming
+   - Add Server-Sent Events (SSE) or fetch-stream chunk parsing to backend route(s) when the upstream model supports token streaming
+   - Update frontend to consume streamed chunks for real-time rendering (replace current simulated typing)
+2. Thinking indicator polish
+   - Add graceful transition between “thinking” and “typing”
+   - Allow user to cancel or skip a long response
+3. Emotional details parity
+   - Ensure Trade Plan Details mirror any new fields added to emotional check (e.g., future image analysis, timers)
+4. Quality & resilience
+   - Add rate limiting on chat endpoints
+   - Improve error states for partial streaming (fallback to complete message)
+5. Workflow extensions (from Phase 3 plan)
+   - Implement 5-minute break timer endpoints and UI
+   - Persist and display timer status in the modal and details

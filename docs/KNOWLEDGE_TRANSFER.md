@@ -399,6 +399,44 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 - **Clear Boundaries**: Added explicit instructions to NOT ask about trading setups or technical analysis
 - **Files**: `backend/src/services/aiService.js` (all three AI methods updated)
 
+### Delete Functionality & Trade Plan Details Modal (November 26, 2025)
+
+#### 1. Trade Plan Delete Functionality
+- **Backend API**: Added DELETE endpoint at `/api/trade-plans/:id` with authentication and ownership checks
+- **Frontend Integration**: Enhanced delete button in TradePlanning.vue to call the API and update UI immediately
+- **User Confirmation**: Added confirmation dialog before deletion to prevent accidental data loss
+- **Immediate UI Update**: Trade plans removed from current plans and recent activity lists immediately after deletion
+
+#### 2. Trade Plan Details Modal
+- **New Component**: Created `TradePlanDetailsModal.vue` with split-pane layout (chat on left, details on right)
+- **Comprehensive View**: Displays trade plan information, emotional state, body signals, and full conversation history
+- **Real-time Data**: Fetches and displays the latest trade plan data including conversation with Aria
+- **Enhanced UX**: Clicking on a trade plan card or the "Continue" button opens the details modal
+- **Modal Actions**: Includes "Continue Plan" and "Delete Plan" buttons within the modal
+
+#### 3. Backend Enhancement for Single Trade Plan
+- **New API Endpoint**: Added GET endpoint at `/api/trade-plans/:id` to fetch a single trade plan by ID
+- **Security**: Ensures users can only access their own trade plans
+- **Data Structure**: Returns complete trade plan data including conversation array and emotional state
+
+#### 4. Frontend Integration
+- **Clickable Cards**: Trade plan cards in TradePlanning.vue are now clickable to open the details modal
+- **Event Handling**: Proper event propagation handling to allow card clicks while preventing button clicks from triggering the card click
+- **State Management**: Added reactive state for modal visibility and selected trade plan ID
+- **Event Coordination**: Handles plan deletion and continuation events from the details modal
+
+**Technical Implementation:**
+- **Backend Routes**: Added GET `/api/trade-plans/:id` and DELETE `/api/trade-plans/:id` endpoints
+- **Frontend Component**: New `TradePlanDetailsModal.vue` with comprehensive trade plan display
+- **UI Integration**: Enhanced TradePlanning.vue with modal state management and click handlers
+- **Event Flow**: Proper event emission and handling between parent and modal components
+
+**Implementation Lessons:**
+- **Modal Design**: Split-pane layout provides comprehensive view without overwhelming users
+- **Event Propagation**: Careful use of `@click.stop` prevents unwanted modal triggers from button clicks
+- **Data Fetching**: Single trade plan endpoint enables detailed modal views without loading all data upfront
+- **User Experience**: Confirmation dialogs prevent accidental data loss from delete operations
+
 ### Reliability & Fallback Improvements (November 26, 2025)
 
 #### Backend AI Fallback
@@ -504,5 +542,32 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 - **Latest Commit**: `90134b7f49e5f6b56802e851dd92b0396ae70d07`
 - **Production URL**: https://tradingaid.netlify.app
 - **Backend API**: https://tradingaid.onrender.com
+
+## Chat Streaming and Trade Details Enhancements (November 27, 2025)
+
+### Implemented Changes
+- Frontend (NewTradePlanModal.vue)
+  - Streaming-style chat replies: assistant messages now "type out" character-by-character for a ChatGPT-like experience
+  - Typing indicator and brief "thinking" delay for natural pacing
+  - Auto-scroll maintained during streaming
+- Backend (tradePlans.js)
+  - Non-blocking chat responses: the chat endpoint returns the AI response immediately and saves the assistant message to the DB asynchronously, unblocking the UI
+  - Response quality guard: minimal-length check with a gentle follow-up appended if the response looks truncated
+  - Route ordering fix: moved /today-trades above /:id to prevent parameter route capture
+- Model (TradePlan.js)
+  - chatMessageSchema.content now defaults to '' so streaming/empty-initial content doesn’t violate Mongoose required constraints
+- Trade Plan Details (TradePlanDetailsModal.vue)
+  - Emotional check section displays:
+    - Current emotion
+    - Body signals with intensity values
+    - Optional notes and Aria’s analysis (if present)
+
+### Short-term Next Steps
+1. Thinking process display
+   - Add a lightweight “thinking steps” indicator in the chat header (e.g., “Reviewing context… → Formulating response…”), without exposing chain-of-thought. This will show progress while the model generates.
+2. True server-driven streaming
+   - Upgrade to Server-Sent Events (SSE) or fetch-stream parsing when the upstream model supports token streaming. Current implementation is front-end simulated streaming; API returns full text quickly with non-blocking persistence.
+3. Trade plan details polish
+   - Keep the Emotional State card at parity with modal data entry and ensure new fields (if any) remain in sync.
 
 *This document was generated based on comprehensive code review and security improvements implemented on November 26, 2025.*

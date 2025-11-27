@@ -100,16 +100,39 @@ router.get('/today-trades', authenticateToken, async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    console.log('Fetching today trades for user:', req.user._id);
+    
     const todayTrades = await TradePlan.find({
       userId: req.user._id,
       createdAt: { $gte: today },
       status: { $in: ['completed', 'entered'] }
     }).sort({ createdAt: -1 });
     
+    console.log(`Found ${todayTrades.length} trades today for user ${req.user._id}`);
+    
     res.json(todayTrades);
   } catch (error) {
     console.error('Error fetching today\'s trades:', error);
     res.status(500).json({ error: 'Failed to fetch today\'s trades' });
+  }
+});
+
+// Get single trade plan by ID
+router.get('/:id', authenticateToken, async (req, res) => {
+  try {
+    const tradePlan = await TradePlan.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+    
+    if (!tradePlan) {
+      return res.status(404).json({ error: 'Trade plan not found' });
+    }
+    
+    res.json(tradePlan);
+  } catch (error) {
+    console.error('Error fetching trade plan:', error);
+    res.status(500).json({ error: 'Failed to fetch trade plan' });
   }
 });
 
@@ -210,16 +233,32 @@ router.post('/:id/chat', authenticateToken, async (req, res) => {
       aiResponse = "I'm experiencing some technical difficulties right now, but let's continue with our emotional check. How are you feeling about this trade opportunity?";
     }
     
-    // Save AI response to conversation
-    tradePlan.conversation.push({
-      role: 'assistant',
-      content: aiResponse,
-      timestamp: new Date()
-    });
+    // Ensure response is not truncated - add minimum length check
+    if (aiResponse && aiResponse.length < 50) {
+      console.warn('AI response seems truncated, adding follow-up:', aiResponse);
+      aiResponse += " Let's continue exploring this together. What else are you noticing about how you're feeling?";
+    }
     
-    await tradePlan.save();
-    
+    // Return AI response immediately without saving to database
+    // The frontend will handle streaming and then save the complete message separately
     res.json({ aiResponse });
+    
+    // Save AI response to conversation in background after response is sent
+    // This avoids blocking the response and allows frontend to start streaming immediately
+    setTimeout(async () => {
+      try {
+        tradePlan.conversation.push({
+          role: 'assistant',
+          content: aiResponse,
+          timestamp: new Date()
+        });
+        await tradePlan.save();
+        console.log('AI response saved to conversation');
+      } catch (saveError) {
+        console.error('Error saving AI response to conversation:', saveError);
+      }
+    }, 100);
+    
   } catch (error) {
     console.error('Error in chat:', {
       message: error.message,
@@ -253,6 +292,25 @@ router.patch('/:id/emotional-state', authenticateToken, validateRequest(emotiona
   } catch (error) {
     console.error('Error updating emotional state:', error);
     res.status(500).json({ error: 'Failed to update emotional state' });
+  }
+});
+
+// Delete trade plan
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const tradePlan = await TradePlan.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+    
+    if (!tradePlan) {
+      return res.status(404).json({ error: 'Trade plan not found' });
+    }
+    
+    res.json({ message: 'Trade plan deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting trade plan:', error);
+    res.status(500).json({ error: 'Failed to delete trade plan' });
   }
 });
 
