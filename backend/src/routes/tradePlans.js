@@ -30,7 +30,7 @@ router.get('/open', authenticateToken, async (req, res) => {
   try {
     const openTradePlans = await TradePlan.find({ 
       userId: req.user._id,
-      status: { $in: ['open', 'emotional_check', 'technical_analysis', 'planning', 'monitoring', 'on_break'] }
+      status: { $in: ['open', 'emotional_check', 'technical_analysis', 'planning', 'monitoring'] }
     }).sort({ createdAt: -1 });
     
     res.json(openTradePlans);
@@ -466,19 +466,24 @@ router.patch('/:id/decision', authenticateToken, validateRequest(decisionUpdateS
   try {
     const { decision } = req.body;
     
-    let status = 'technical_analysis';
+    let status;
     if (decision === 'passed') {
       status = 'passed_over';
     } else if (decision === 'take_break') {
-      status = 'on_break';
+      // Don't change status - leave it on emotional_check
+      status = undefined;
+    } else {
+      status = 'technical_analysis';
+    }
+    
+    const updateFields = { decision };
+    if (status) {
+      updateFields.status = status;
     }
     
     const tradePlan = await TradePlan.findOneAndUpdate(
       { _id: req.params.id, userId: req.user._id },
-      { 
-        decision,
-        status
-      },
+      updateFields,
       { new: true }
     );
     
