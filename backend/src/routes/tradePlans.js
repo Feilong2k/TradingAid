@@ -186,12 +186,19 @@ router.post('/:id/chat', authenticateToken, async (req, res) => {
     });
     
     // Get AI response based on current emotional state and conversation context
-    const aiResponse = await aiService.analyzeChatMessage(
-      req.user._id.toString(),
-      message,
-      emotionalState,
-      tradePlan.conversation
-    );
+    let aiResponse;
+    try {
+      aiResponse = await aiService.analyzeChatMessage(
+        req.user._id.toString(),
+        message,
+        emotionalState,
+        tradePlan.conversation
+      );
+    } catch (aiError) {
+      console.error('AI service error in chat:', aiError);
+      // Provide a graceful fallback response when AI service fails
+      aiResponse = "I'm experiencing some technical difficulties right now, but let's continue with our emotional check. How are you feeling about this trade opportunity?";
+    }
     
     // Save AI response to conversation
     tradePlan.conversation.push({
@@ -204,7 +211,12 @@ router.post('/:id/chat', authenticateToken, async (req, res) => {
     
     res.json({ aiResponse });
   } catch (error) {
-    console.error('Error in chat:', error);
+    console.error('Error in chat:', {
+      message: error.message,
+      stack: error.stack,
+      tradePlanId: req.params.id,
+      userId: req.user._id
+    });
     res.status(500).json({ error: 'Failed to process chat message' });
   }
 });
