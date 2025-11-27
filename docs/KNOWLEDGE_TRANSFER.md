@@ -392,6 +392,13 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 - **Prevent TypeError**: No more "Cannot read properties of undefined (reading 'push')" errors
 - **Files**: `backend/src/models/TradePlan.js`, `backend/src/routes/tradePlans.js`
 
+#### AI Emotional Check Focus Enhancement
+- **Emotional Focus**: Updated AI prompts to focus exclusively on emotions and coping strategies
+- **No Trading Specifics**: Removed all trading-specific questions from emotional check phase
+- **Coping Strategies**: Added emphasis on breathing exercises, taking breaks, and emotional management
+- **Clear Boundaries**: Added explicit instructions to NOT ask about trading setups or technical analysis
+- **Files**: `backend/src/services/aiService.js` (all three AI methods updated)
+
 ### Reliability & Fallback Improvements (November 26, 2025)
 
 #### Backend AI Fallback

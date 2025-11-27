@@ -26,23 +26,19 @@ export class AIService {
     };
 
     const prompt = `
-TRADING CONTEXT CHECK-IN:
-
-The user is planning to trade ${tradePlan.asset} ${tradePlan.direction} on ${tradePlan.timeframe}.
-
-TRADING DAY CONTEXT:
-- Today's trades so far: ${todayTrades.length}
-- First trade of the day: ${todayTrades.length === 0 ? 'Yes' : 'No'}
-- Recent activity: ${todayTrades.length > 0 ? 'Already traded today' : 'Fresh start'}
-
 EMOTIONAL CHECK-IN REQUEST:
-Please provide a warm, supportive prompt asking the user to check in with their emotional state before proceeding. Focus on:
-1. Acknowledge the trading context briefly
-2. Ask them to reflect on how they're feeling right now
-3. Emphasize the importance of emotional awareness
-4. Keep it concise (2-3 sentences maximum)
 
-Remember: The user hasn't completed the emotional questionnaire yet - you're inviting them to do so now.
+The user is about to begin their trading process. This is the emotional check phase where we focus ONLY on their emotional state and coping strategies.
+
+IMPORTANT: DO NOT ask about trading specifics like the asset, setup, or technical analysis. The user hasn't done their analysis yet.
+
+Focus exclusively on:
+1. Acknowledging they're starting a trading session
+2. Asking them to check in with their current emotional state
+3. Emphasizing that emotional awareness comes before analysis
+4. Keeping it warm, supportive, and focused on feelings (not trading)
+
+Keep it concise (2-3 sentences maximum). Remember: This is about emotional preparation, not trading strategy.
 `;
 
     return await this.callDeepseek(userId, prompt, 'deepseek-reasoner');
@@ -91,14 +87,14 @@ USER'S MESSAGE:
 
 Please respond as Aria, the supportive trading coach. Your response should:
 1. Acknowledge the user's message naturally
-2. Provide emotional support and guidance
-3. Ask thoughtful questions to encourage self-reflection
-4. Offer proactive suggestions when appropriate (like taking a 5-minute break, breathing exercises, or reconsidering the trade)
+2. Focus exclusively on emotional support and coping strategies
+3. Ask questions that help the user explore their feelings
+4. Offer proactive suggestions for managing emotions (like taking a 5-minute break, breathing exercises, or stepping away from trading)
 5. Keep responses concise (2-3 sentences maximum)
 6. Maintain a warm, caring friend tone
-7. Guide the conversation toward emotional awareness and trading readiness
+7. Guide the conversation toward emotional awareness and coping strategies
 
-Remember: You're helping the user through an emotional check before trading. Focus on their emotional state and readiness. Be proactive with suggestions when the user shows signs of stress or pressure.
+CRITICAL: DO NOT ask about trading specifics, setups, or technical analysis. The user hasn't done their analysis yet. This phase is ONLY about emotional state and coping strategies.
 `;
 
     return await this.callDeepseek(userId, prompt, 'deepseek-reasoner');
@@ -171,18 +167,18 @@ Remember: You're helping the user through an emotional check before trading. Foc
   // Fallback response generator when AI service is unavailable
   generateFallbackResponse(prompt) {
     try {
-      if (prompt && prompt.includes('TRADING CONTEXT CHECK-IN')) {
-        return "Before we dive in, take a slow breath and do a quick check-in: how are you feeling right now (one or two words)? This helps you trade with clarity and discipline. When you’re ready, share your current emotion.";
+      if (prompt && prompt.includes('EMOTIONAL CHECK-IN REQUEST')) {
+        return "Let's start with a moment of self-awareness. Take a deep breath and check in with yourself: what emotion are you feeling right now? This emotional awareness is your foundation for clear decision-making.";
       }
       if (prompt && prompt.includes('EMOTIONAL QUESTIONNAIRE ANALYSIS')) {
-        return "Thanks for sharing your responses. Based on this, let’s focus on trading readiness and one actionable step to stay disciplined. Keep it slow and deliberate—confirm how you feel before proceeding.";
+        return "Thanks for sharing your emotional state. Let's focus on how you can manage these feelings effectively. What's one small step you can take right now to feel more centered?";
       }
       if (prompt && prompt.includes('EMOTIONAL CHECK CHAT')) {
-        return "I hear you. Let’s pause for a moment—what’s the strongest feeling you notice in your body right now, and how intense is it (1–10)?";
+        return "I hear you. Let's focus on your emotional state right now. What's the strongest feeling you notice, and how might you ease it with a simple breathing exercise or short break?";
       }
-      return "Let’s start with a quick emotional check-in. How are you feeling right now (one or two words)? We’ll proceed step-by-step from there.";
+      return "Let's begin with an emotional check-in. How are you feeling right now? Remember, emotional awareness comes before analysis.";
     } catch {
-      return "Let’s begin with a quick emotional check-in. How are you feeling right now?";
+      return "Let's start with a quick emotional check-in. How are you feeling right now?";
     }
   }
 
