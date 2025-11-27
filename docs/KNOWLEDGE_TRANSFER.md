@@ -370,6 +370,14 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 - **Encourages Engagement**: All responses prompt user to share more details about their emotional state
 - **Files**: `frontend/src/components/NewTradePlanModal.vue` (submitEmotionalCheck function)
 
+#### AI Response Fallback Improvement
+- **Context-Aware Fallbacks**: Replaced generic "I'm having trouble processing your message" with context-aware responses
+- **Detailed Error Logging**: Added comprehensive error logging for chat API failures including status, data, URL, and tradePlanId
+- **Initial Conversation**: Provides "Let's start with a quick emotional check-in" for first messages
+- **Ongoing Conversation**: Provides "Thanks for sharing. Let's continue exploring" for subsequent messages
+- **Improved UX**: Better user experience when backend AI service is unavailable
+- **Files**: `frontend/src/components/NewTradePlanModal.vue` (sendUserMessage function)
+
 ### Reliability & Fallback Improvements (November 26, 2025)
 
 #### Backend AI Fallback
