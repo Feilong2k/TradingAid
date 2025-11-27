@@ -628,12 +628,48 @@ This development plan ensures that the existing AI personality is fully leverage
 - Trade Plan Details
   - Emotional check summary: Displays current emotion, body signals with intensity, optional notes, and Aria’s analysis
 
+### Trade Plan Details Modal Enhancements - Implemented November 27, 2025
+
+#### UI/UX Improvements
+- **Enhanced Modal Title**: Replaced generic "Trade Plan Details" with dynamic title format: `{Asset} {Timeframe} {Direction} signal - {Created Date/Time}`
+  - Example: "NQ H1 Long signal - 11/27/2025, 10:48:02 AM"
+  - Uses actual trade plan data and creation timestamp for context-rich display
+
+- **Interactive Status Management**: 
+  - Status moved to right side of header as functional dropdown
+  - Real-time status updates via PATCH API calls
+  - Visual status indicators with color-coded dropdown options
+  - Available statuses: Open, Emotional Check, Technical Analysis, Planning, Monitoring, Entered, Completed, Passed Over, Cancelled
+
+- **Collapsible Sections**: 
+  - Trade Setup, Emotional State, and Actions sections now collapsible
+  - Smooth toggle animations with hover effects
+  - Persistent expansion state during modal session
+  - Improved information hierarchy and visual organization
+
+- **Scroll Bar Visibility**: 
+  - Fixed scroll bar display issue by setting overflow-y to 'scroll' instead of 'auto'
+  - Ensures consistent scroll bar presence in chat messages and details columns
+  - Enhanced user experience with predictable scrolling behavior
+
+#### Technical Implementation
+- **Vue 3 Composition API**: Used reactive state management for section expansion
+- **Real-time Status Updates**: Immediate API synchronization on status change
+- **Responsive Design**: Maintained mobile-friendly layout with collapsible sections
+- **Accessibility**: Proper focus management and keyboard navigation for collapsible sections
+
+#### User Experience Benefits
+- **Reduced Cognitive Load**: Collapsible sections help users focus on relevant information
+- **Quick Status Updates**: Inline status dropdown enables rapid workflow progression
+- **Clear Context**: Dynamic titles provide immediate trade plan context
+- **Consistent Navigation**: Always-visible scroll bars improve content discovery
+
 ### Immediate Next Work
 1. True server-driven streaming
    - Add Server-Sent Events (SSE) or fetch-stream chunk parsing to backend route(s) when the upstream model supports token streaming
    - Update frontend to consume streamed chunks for real-time rendering (replace current simulated typing)
 2. Thinking indicator polish
-   - Add graceful transition between “thinking” and “typing”
+   - Add graceful transition between "thinking" and "typing"
    - Allow user to cancel or skip a long response
 3. Emotional details parity
    - Ensure Trade Plan Details mirror any new fields added to emotional check (e.g., future image analysis, timers)

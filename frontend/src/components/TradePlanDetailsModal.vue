@@ -3,8 +3,36 @@
     <div class="modal-container">
       <!-- Modal Header -->
       <div class="modal-header">
-        <h2 class="modal-title">Trade Plan Details</h2>
-        <button @click="closeModal" class="close-btn">×</button>
+        <div class="header-left">
+          <h2 class="modal-title">{{ formattedTitle }}</h2>
+          <div class="trade-info">
+            <span class="trade-asset">{{ tradePlan.asset }}</span>
+            <span class="trade-direction" :class="tradePlan.direction">{{ tradePlan.direction }}</span>
+            <span class="trade-timeframe">{{ tradePlan.timeframe }}</span>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="status-dropdown-container">
+            <label class="status-label">Status:</label>
+            <select 
+              v-model="selectedStatus" 
+              @change="updateStatus"
+              class="status-dropdown"
+              :class="selectedStatus"
+            >
+              <option value="open">Open</option>
+              <option value="emotional_check">Emotional Check</option>
+              <option value="technical_analysis">Technical Analysis</option>
+              <option value="planning">Planning</option>
+              <option value="monitoring">Monitoring</option>
+              <option value="entered">Entered</option>
+              <option value="completed">Completed</option>
+              <option value="passed_over">Passed Over</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <button @click="closeModal" class="close-btn">×</button>
+        </div>
       </div>
 
       <!-- Modal Content -->
@@ -45,74 +73,84 @@
             
             <!-- Basic Trade Info -->
             <div class="details-section">
-              <h4 class="section-title">Trade Setup</h4>
-              <div class="detail-grid">
-                <div class="detail-item">
-                  <span class="detail-label">Asset:</span>
-                  <span class="detail-value">{{ tradePlan.asset }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Direction:</span>
-                  <span 
-                    class="detail-value" 
-                    :class="{ long: tradePlan.direction === 'long', short: tradePlan.direction === 'short' }"
-                  >
-                    {{ tradePlan.direction }}
-                  </span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Timeframe:</span>
-                  <span class="detail-value">{{ tradePlan.timeframe }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Status:</span>
-                  <span class="detail-value status" :class="tradePlan.status">
-                    {{ formatStatus(tradePlan.status) }}
-                  </span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Created:</span>
-                  <span class="detail-value">{{ formatDateTime(tradePlan.createdAt) }}</span>
+              <div class="section-header" @click="toggleSection('tradeSetup')">
+                <h4 class="section-title">Trade Setup</h4>
+                <span class="collapse-icon" :class="{ expanded: expandedSections.tradeSetup }">▼</span>
+              </div>
+              <div class="section-content" v-if="expandedSections.tradeSetup">
+                <div class="detail-grid">
+                  <div class="detail-item">
+                    <span class="detail-label">Asset:</span>
+                    <span class="detail-value">{{ tradePlan.asset }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Direction:</span>
+                    <span 
+                      class="detail-value" 
+                      :class="{ long: tradePlan.direction === 'long', short: tradePlan.direction === 'short' }"
+                    >
+                      {{ tradePlan.direction }}
+                    </span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Timeframe:</span>
+                    <span class="detail-value">{{ tradePlan.timeframe }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value status" :class="tradePlan.status">
+                      {{ formatStatus(tradePlan.status) }}
+                    </span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Created:</span>
+                    <span class="detail-value">{{ formatDateTime(tradePlan.createdAt) }}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             <!-- Emotional State -->
             <div class="details-section" v-if="hasEmotionalStateData">
-              <h4 class="section-title">Emotional State</h4>
-              <div class="emotional-state">
-                <div class="emotion-display" v-if="tradePlan.emotionalState.state">
-                  <span class="emotion-label">Current Emotion:</span>
-                  <span class="emotion-value">{{ tradePlan.emotionalState.state }}</span>
-                </div>
-                
-                <div class="body-signals" v-if="tradePlan.emotionalState.bodySignals && tradePlan.emotionalState.bodySignals.length > 0">
-                  <h5 class="subsection-title">Body Signals</h5>
-                  <div class="signal-list">
-                    <div 
-                      v-for="(signal, index) in tradePlan.emotionalState.bodySignals" 
-                      :key="index"
-                      class="signal-item"
-                    >
-                      <span class="signal-text">{{ signal.signal }}</span>
-                      <span class="signal-intensity">Intensity: {{ signal.intensity }}/10</span>
+              <div class="section-header" @click="toggleSection('emotionalState')">
+                <h4 class="section-title">Emotional State</h4>
+                <span class="collapse-icon" :class="{ expanded: expandedSections.emotionalState }">▼</span>
+              </div>
+              <div class="section-content" v-if="expandedSections.emotionalState">
+                <div class="emotional-state">
+                  <div class="emotion-display" v-if="tradePlan.emotionalState.state">
+                    <span class="emotion-label">Current Emotion:</span>
+                    <span class="emotion-value">{{ tradePlan.emotionalState.state }}</span>
+                  </div>
+                  
+                  <div class="body-signals" v-if="tradePlan.emotionalState.bodySignals && tradePlan.emotionalState.bodySignals.length > 0">
+                    <h5 class="subsection-title">Body Signals</h5>
+                    <div class="signal-list">
+                      <div 
+                        v-for="(signal, index) in tradePlan.emotionalState.bodySignals" 
+                        :key="index"
+                        class="signal-item"
+                      >
+                        <span class="signal-text">{{ signal.signal }}</span>
+                        <span class="signal-intensity">Intensity: {{ signal.intensity }}/10</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div class="emotional-notes" v-if="tradePlan.emotionalState.notes">
-                  <h5 class="subsection-title">Notes</h5>
-                  <p class="notes-text">{{ tradePlan.emotionalState.notes }}</p>
-                </div>
+                  <div class="emotional-notes" v-if="tradePlan.emotionalState.notes">
+                    <h5 class="subsection-title">Notes</h5>
+                    <p class="notes-text">{{ tradePlan.emotionalState.notes }}</p>
+                  </div>
 
-                <div class="ai-analysis" v-if="tradePlan.emotionalState.aiAnalysis">
-                  <h5 class="subsection-title">Aria's Analysis</h5>
-                  <p class="analysis-text">{{ tradePlan.emotionalState.aiAnalysis }}</p>
-                </div>
+                  <div class="ai-analysis" v-if="tradePlan.emotionalState.aiAnalysis">
+                    <h5 class="subsection-title">Aria's Analysis</h5>
+                    <p class="analysis-text">{{ tradePlan.emotionalState.aiAnalysis }}</p>
+                  </div>
 
-                <div v-if="!hasEmotionalStateContent" class="no-emotional-data">
-                  <p class="no-data-text">No emotional check data available yet</p>
-                  <p class="no-data-subtitle">Complete an emotional check to see your data here</p>
+                  <div v-if="!hasEmotionalStateContent" class="no-emotional-data">
+                    <p class="no-data-text">No emotional check data available yet</p>
+                    <p class="no-data-subtitle">Complete an emotional check to see your data here</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -120,21 +158,26 @@
 
             <!-- Actions -->
             <div class="details-section">
-              <h4 class="section-title">Actions</h4>
-              <div class="action-buttons">
-                <button 
-                  @click="continuePlan" 
-                  class="action-btn primary"
-                  :disabled="!canContinue"
-                >
-                  Continue Plan
-                </button>
-                <button 
-                  @click="deletePlan" 
-                  class="action-btn danger"
-                >
-                  Delete Plan
-                </button>
+              <div class="section-header" @click="toggleSection('actions')">
+                <h4 class="section-title">Actions</h4>
+                <span class="collapse-icon" :class="{ expanded: expandedSections.actions }">▼</span>
+              </div>
+              <div class="section-content" v-if="expandedSections.actions">
+                <div class="action-buttons">
+                  <button 
+                    @click="continuePlan" 
+                    class="action-btn primary"
+                    :disabled="!canContinue"
+                  >
+                    Continue Plan
+                  </button>
+                  <button 
+                    @click="deletePlan" 
+                    class="action-btn danger"
+                  >
+                    Delete Plan
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -187,6 +230,12 @@ const emit = defineEmits(['close', 'plan-deleted', 'plan-continued']);
 const tradePlan = ref(null);
 const isLoading = ref(true);
 const showDeleteConfirmation = ref(false);
+const selectedStatus = ref('');
+const expandedSections = ref({
+  tradeSetup: true,
+  emotionalState: true,
+  actions: true
+});
 
 const loadTradePlanDetails = async () => {
   isLoading.value = true;
@@ -295,6 +344,53 @@ const hasEmotionalStateContent = computed(() => {
          emotionalState.aiAnalysis;
 });
 
+// Computed property for formatted title
+const formattedTitle = computed(() => {
+  if (!tradePlan.value) return 'Trade Plan Details';
+  
+  const asset = tradePlan.value.asset || '';
+  const direction = tradePlan.value.direction || '';
+  const timeframe = tradePlan.value.timeframe || '';
+  const createdAt = tradePlan.value.createdAt ? new Date(tradePlan.value.createdAt).toLocaleString() : '';
+  
+  return `${asset} ${timeframe} ${direction} signal - ${createdAt}`;
+});
+
+// Method to update status
+const updateStatus = async () => {
+  if (!tradePlan.value || !selectedStatus.value) return;
+  
+  try {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    await axios.patch(`${apiBaseUrl}/api/trade-plans/${props.tradePlanId}`, {
+      status: selectedStatus.value
+    }, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+    });
+    
+    // Update local trade plan data
+    tradePlan.value.status = selectedStatus.value;
+  } catch (error) {
+    console.error('Error updating status:', error);
+    alert('Failed to update status');
+    // Revert selected status to original value
+    selectedStatus.value = tradePlan.value.status;
+  }
+};
+
+// Method to toggle section expansion
+const toggleSection = (section) => {
+  expandedSections.value[section] = !expandedSections.value[section];
+};
+
+// Watch for tradePlan changes to update selectedStatus
+import { watch } from 'vue';
+watch(tradePlan, (newTradePlan) => {
+  if (newTradePlan) {
+    selectedStatus.value = newTradePlan.status;
+  }
+}, { immediate: true });
+
 onMounted(() => {
   loadTradePlanDetails();
 });
@@ -334,17 +430,155 @@ onMounted(() => {
 .modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 1.5rem 2rem;
   border-bottom: 1px solid #e9ecef;
   background: #f8f9fa;
+  gap: 2rem;
+}
+
+.header-left {
+  flex: 1;
 }
 
 .modal-title {
   color: #2c3e50;
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 600;
-  margin: 0;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.3;
+}
+
+.trade-info {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.trade-asset {
+  color: #2c3e50;
+  font-weight: 600;
+  background: #e9ecef;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.trade-direction {
+  color: #2c3e50;
+  font-weight: 500;
+  background: #e9ecef;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.trade-direction.long {
+  background: #d4edda;
+  color: #155724;
+}
+
+.trade-direction.short {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.trade-timeframe {
+  color: #6c757d;
+  font-weight: 500;
+  background: #e9ecef;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.header-right {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.status-dropdown-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-label {
+  color: #6c757d;
+  font-weight: 500;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.status-dropdown {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  background: white;
+  color: #2c3e50;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 150px;
+  transition: all 0.3s ease;
+}
+
+.status-dropdown:hover {
+  border-color: #667eea;
+}
+
+.status-dropdown:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.25);
+}
+
+/* Status-specific dropdown colors */
+.status-dropdown.open {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-dropdown.emotional_check {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-dropdown.technical_analysis {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-dropdown.planning {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-dropdown.monitoring {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-dropdown.entered {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-dropdown.completed {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-dropdown.passed_over {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+.status-dropdown.cancelled {
+  background: #f8d7da;
+  color: #721c24;
 }
 
 .close-btn {
@@ -415,7 +649,7 @@ onMounted(() => {
 
 .chat-messages {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: scroll;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -499,7 +733,7 @@ onMounted(() => {
 /* Details Column Styles */
 .details-column {
   padding: 1.5rem;
-  overflow-y: auto;
+  overflow-y: scroll;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -511,11 +745,42 @@ onMounted(() => {
   padding: 1.5rem;
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  margin: -0.5rem 0 0 -0.5rem;
+  transition: background-color 0.2s ease;
+  border-radius: 6px;
+}
+
+.section-header:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
 .section-title {
   color: #2c3e50;
   font-size: 1.1rem;
   font-weight: 600;
-  margin: 0 0 1rem 0;
+  margin: 0;
+  flex: 1;
+}
+
+.collapse-icon {
+  font-size: 0.8rem;
+  color: #6c757d;
+  transition: transform 0.3s ease;
+  margin-left: 0.5rem;
+}
+
+.collapse-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.section-content {
+  margin-top: 1rem;
 }
 
 .detail-grid {
