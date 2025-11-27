@@ -322,6 +322,22 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 
 ---
 
+### AI Model & UI Layout Improvements (November 26, 2025)
+
+#### AI Model Configuration
+- **Model Confirmed**: The application uses `deepseek-reasoner` model for all AI interactions
+- **Model Usage**:
+  - Emotional check conversations
+  - Trading context analysis  
+  - Emotional questionnaire analysis
+  - Chat message analysis during emotional checks
+- **Files**: `backend/src/services/aiService.js` (all methods use 'deepseek-reasoner')
+
+#### Emotional Check Layout Enhancement
+- **50-50 Split Layout**: Changed emotional check container from `1fr 450px` to `1fr 1fr` for equal column distribution
+- **Better Balance**: Chat and emotion selection columns now each take 50% of modal width
+- **Files**: `frontend/src/components/NewTradePlanModal.vue` (CSS grid-template-columns)
+
 ### Reliability & Fallback Improvements (November 26, 2025)
 
 #### Backend AI Fallback
