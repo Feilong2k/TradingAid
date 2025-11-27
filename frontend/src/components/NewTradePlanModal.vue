@@ -1,6 +1,6 @@
-<template>
-    <div class="modal-overlay" @click="closeModal">
-      <div class="modal-content" @click.stop>
+  <template>
+    <div class="modal-overlay">
+      <div class="modal-content">
         <!-- Step 1: Trade Setup -->
         <div v-if="currentStep === 1" class="step-container">
           <div class="modal-header">
