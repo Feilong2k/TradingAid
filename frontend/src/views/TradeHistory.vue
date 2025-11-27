@@ -6,7 +6,6 @@
         <h1 class="app-title">📈 Trading Aid</h1>
         <nav class="navigation">
           <router-link to="/planning" class="nav-link">Trade Planning</router-link>
-          <router-link to="/active" class="nav-link">Active Trades</router-link>
           <router-link to="/history" class="nav-link active">Trade History</router-link>
         </nav>
         <div class="user-controls">
@@ -29,6 +28,15 @@
       </div>
     </header>
 
+    <!-- Trade Plan Details Modal -->
+    <TradePlanDetailsModal
+      v-if="showDetailsModal"
+      :trade-plan-id="selectedPlanId"
+      @close="showDetailsModal = false"
+      @plan-deleted="handlePlanDeleted"
+      @plan-continued="handlePlanContinued"
+    />
+
     <!-- Main Content -->
     <main class="page-content">
       <div class="container">
@@ -38,37 +46,12 @@
           <p class="page-subtitle">Review completed trades and learn from your performance</p>
         </div>
 
-        <!-- Performance Summary -->
-        <div class="section">
-          <h3 class="section-title">Performance Summary</h3>
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-value">{{ performanceStats.winRate }}%</div>
-              <div class="stat-label">Win Rate</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value">{{ performanceStats.totalTrades }}</div>
-              <div class="stat-label">Total Trades</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" :class="{ positive: performanceStats.netPnl > 0, negative: performanceStats.netPnl < 0 }">
-                {{ performanceStats.netPnl > 0 ? '+' : '' }}{{ performanceStats.netPnl }}%
-              </div>
-              <div class="stat-label">Net P&L</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value">{{ performanceStats.avgWin }}/{{ performanceStats.avgLoss }}</div>
-              <div class="stat-label">Avg Win/Loss</div>
-            </div>
-          </div>
-        </div>
-
         <!-- Trade History -->
         <div class="section">
           <div class="section-header">
-            <h3 class="section-title">Recent Trades</h3>
+            <h3 class="section-title">Completed Trade Plans</h3>
             <div class="filters">
-              <select v-model="timeFilter" class="filter-select">
+              <select v-model="timeFilter" class="filter-select" @change="loadCompletedTradePlans">
                 <option value="all">All Time</option>
                 <option value="week">This Week</option>
                 <option value="month">This Month</option>
@@ -77,31 +60,29 @@
           </div>
           <div class="trades-table">
             <div class="table-header">
-              <div class="table-cell">Symbol</div>
+              <div class="table-cell">Asset</div>
               <div class="table-cell">Direction</div>
-              <div class="table-cell">Entry/Exit</div>
-              <div class="table-cell">P&L</div>
-              <div class="table-cell">Date</div>
+              <div class="table-cell">Timeframe</div>
+              <div class="table-cell">Status</div>
+              <div class="table-cell">Created</div>
               <div class="table-cell">Actions</div>
             </div>
             <div v-if="tradeHistory.length === 0" class="empty-table">
               <div class="empty-icon">📊</div>
-              <p>No trade history yet</p>
+              <p>No completed trades yet</p>
             </div>
             <div v-for="trade in tradeHistory" :key="trade.id" class="table-row">
-              <div class="table-cell symbol">{{ trade.symbol }}</div>
+              <div class="table-cell symbol">{{ trade.asset }}</div>
               <div class="table-cell">
                 <span class="direction" :class="trade.direction">{{ trade.direction }}</span>
               </div>
-              <div class="table-cell">{{ trade.entry }} → {{ trade.exit }}</div>
+              <div class="table-cell">{{ trade.timeframe }}</div>
               <div class="table-cell">
-                <span class="pnl" :class="{ positive: trade.pnl > 0, negative: trade.pnl < 0 }">
-                  {{ trade.pnl > 0 ? '+' : '' }}{{ trade.pnl }}%
-                </span>
+                <span class="status" :class="trade.status">{{ trade.status }}</span>
               </div>
-              <div class="table-cell">{{ formatDate(trade.date) }}</div>
+              <div class="table-cell">{{ formatDate(trade.createdAt) }}</div>
               <div class="table-cell">
-                <button @click="reviewTrade(trade.id)" class="action-btn small">Review</button>
+                <button @click="openPlanDetails(trade.id)" class="action-btn small">Review</button>
               </div>
             </div>
           </div>
@@ -114,54 +95,64 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth.js';
+import TradePlanDetailsModal from '../components/TradePlanDetailsModal.vue';
+import axios from 'axios';
 
 const authStore = useAuthStore();
 
 const timeFilter = ref('all');
-const performanceStats = ref({
-  winRate: 65,
-  totalTrades: 24,
-  netPnl: 12.5,
-  avgWin: 2.1,
-  avgLoss: -1.2
-});
+const tradeHistory = ref([]);
+const showDetailsModal = ref(false);
+const selectedPlanId = ref(null);
+const isLoading = ref(false);
 
-const tradeHistory = ref([
-  {
-    id: 1,
-    symbol: 'BTC/USD',
-    direction: 'long',
-    entry: '$42,100',
-    exit: '$43,500',
-    pnl: 3.32,
-    date: new Date('2024-01-10')
-  },
-  {
-    id: 2,
-    symbol: 'ETH/USD',
-    direction: 'short',
-    entry: '$2,450',
-    exit: '$2,380',
-    pnl: 2.86,
-    date: new Date('2024-01-08')
-  },
-  {
-    id: 3,
-    symbol: 'AAPL',
-    direction: 'long',
-    entry: '$185.20',
-    exit: '$182.50',
-    pnl: -1.46,
-    date: new Date('2024-01-05')
+const loadCompletedTradePlans = async () => {
+  isLoading.value = true;
+  try {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const response = await axios.get(`${apiBaseUrl}/api/trade-plans`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+    });
+    
+    // Filter for completed and passed_over trades
+    const completedTrades = response.data.filter(plan => 
+      ['completed', 'passed_over', 'cancelled'].includes(plan.status)
+    );
+    
+    // Transform trade plan data for the table
+    tradeHistory.value = completedTrades.map(plan => ({
+      id: plan._id,
+      asset: plan.asset,
+      direction: plan.direction,
+      timeframe: plan.timeframe,
+      status: plan.status,
+      createdAt: plan.createdAt
+    }));
+    
+  } catch (error) {
+    console.error('Error loading completed trade plans:', error);
+  } finally {
+    isLoading.value = false;
   }
-]);
+};
 
-const reviewTrade = (tradeId) => {
-  console.log('Reviewing trade:', tradeId);
+const openPlanDetails = (planId) => {
+  selectedPlanId.value = planId;
+  showDetailsModal.value = true;
+};
+
+const handlePlanDeleted = (planId) => {
+  // Remove from trade history immediately
+  tradeHistory.value = tradeHistory.value.filter(plan => plan.id !== planId);
+  console.log('Trade plan deleted from details modal:', planId);
+};
+
+const handlePlanContinued = (tradePlan) => {
+  console.log('Continuing trade plan from details modal:', tradePlan);
 };
 
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString();
+  return new Date(date).toLocaleString();
 };
 
 const handleLogout = async () => {
@@ -173,7 +164,7 @@ const handleLogout = async () => {
 };
 
 onMounted(() => {
-  // TODO: Load actual data from API
+  loadCompletedTradePlans();
 });
 </script>
 

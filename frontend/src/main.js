@@ -4,7 +4,6 @@ import { createRouter, createWebHistory } from "vue-router";
 import App from "./App.vue";
 import Home from "./views/Home.vue";
 import TradePlanning from "./views/TradePlanning.vue";
-import ActiveTrades from "./views/ActiveTrades.vue";
 import TradeHistory from "./views/TradeHistory.vue";
 import AuthSuccess from "./views/AuthSuccess.vue";
 import AuthError from "./views/AuthError.vue";
@@ -22,7 +21,6 @@ const router = createRouter({
   routes: [
     { path: "/", component: Home },
     { path: "/planning", component: TradePlanning },
-    { path: "/active", component: ActiveTrades },
     { path: "/history", component: TradeHistory },
     { path: "/auth-success", component: AuthSuccess },
     { path: "/auth-error", component: AuthError },

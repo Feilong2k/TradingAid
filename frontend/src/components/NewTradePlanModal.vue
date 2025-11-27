@@ -334,6 +334,7 @@
   });
 
   const currentTradePlanId = ref(null);
+  const emotionalSaved = ref(false);
   
   // Chat conversation
   const conversation = ref([]);
@@ -411,27 +412,42 @@
       alert('Please select an emotion first');
       return;
     }
-
+ 
     const currentEmotion = emotionalStates.value.find(e => e.value === emotionalState.value.state);
-    
+     
     // Build message with emotion and body signals
     let message = `I'm feeling ${currentEmotion.label.toLowerCase()}`;
-    
+     
     // Add body signals if they exist and are filled
     const filledBodySignals = emotionalState.value.bodySignals.filter(signal => 
       signal.signal && signal.signal.trim() !== ''
     );
-    
+     
     if (filledBodySignals.length > 0) {
       const signalsText = filledBodySignals.map(signal => 
         `${signal.signal} (intensity: ${signal.intensity}/10)`
       ).join(', ');
       message += `. Body signals: ${signalsText}`;
     }
-    
-    // Add emotion selection to chat
+ 
+    // Persist emotional state immediately (fail-safe: stop if save fails)
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      await axios.patch(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/emotional-state`, {
+        emotionalState: emotionalState.value
+      }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+      emotionalSaved.value = true;
+    } catch (err) {
+      console.error('Error saving emotional state:', err);
+      alert('Failed to save emotional check. Please try again.');
+      return;
+    }
+     
+    // Add emotion selection to chat (for AI response)
     addUserMessage(message);
-    
+     
     try {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
       const response = await axios.post(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/chat`, {
@@ -522,9 +538,12 @@
   
     // Abort + timeout for fail-safe
     const controller = new AbortController();
-    const timeoutMs = 3500;
+    const timeoutMs = 10000; // Increased timeout to 10 seconds
     const firstTokenTimer = setTimeout(() => {
-      if (!firstTokenReceived) controller.abort();
+      if (!firstTokenReceived) {
+        console.log('Stream timeout - no tokens received within', timeoutMs, 'ms');
+        controller.abort();
+      }
     }, timeoutMs);
   
     try {
@@ -540,6 +559,7 @@
   
       // If server fell back to non-stream JSON (e.g., error), get bundled reply
       if (!resp.ok || !resp.body) {
+        console.log('Stream response not OK or no body, falling back to bundled reply');
         clearTimeout(firstTokenTimer);
         await fallbackBundledReply(messageText, assistantMessage);
         return;
@@ -567,9 +587,16 @@
   
           if (payload === '[DONE]') {
             // Finish successfully
+            console.log('Stream completed with [DONE]');
             clearTimeout(firstTokenTimer);
             isThinking.value = false;
             ariaTyping.value = false;
+            
+            // Ensure message has minimum length to prevent truncation
+            if (assistantMessage.content.length < 100) {
+              assistantMessage.content += " Let's continue exploring this together. What else are you noticing?";
+            }
+            
             scrollToBottom();
             return;
           }
@@ -584,28 +611,38 @@
                 clearTimeout(firstTokenTimer);
                 isThinking.value = false;
                 ariaTyping.value = true;
+                console.log('First token received, switching to typing mode');
               }
               assistantMessage.content += delta;
               scrollToBottom();
             }
-          } catch {
+          } catch (e) {
             // Ignore keepalives or malformed chunks
+            console.log('Ignoring malformed chunk:', e);
           }
         }
       }
   
       // If stream ended without [DONE], treat as failure and fallback
       if (!firstTokenReceived) {
+        console.log('Stream ended without receiving any tokens');
         clearTimeout(firstTokenTimer);
         await fallbackBundledReply(messageText, assistantMessage);
       } else {
         // Ended but no explicit DONE; just finalize UI
+        console.log('Stream ended without [DONE] marker');
         clearTimeout(firstTokenTimer);
         isThinking.value = false;
         ariaTyping.value = false;
+        
+        // Add continuation if response seems truncated
+        if (assistantMessage.content.length < 150) {
+          assistantMessage.content += " I'd love to hear more about your thoughts on this. What else comes to mind?";
+        }
       }
     } catch (err) {
       // Abort (timeout) or network error -> fallback to bundled reply
+      console.log('Stream error:', err);
       clearTimeout(firstTokenTimer);
       await fallbackBundledReply(messageText, assistantMessage);
     }
@@ -727,7 +764,10 @@
   };
 
   const proceedToTechnicalAnalysis = async () => {
-    await updateEmotionalState();
+    if (!emotionalSaved.value) {
+      await updateEmotionalState();
+      emotionalSaved.value = true;
+    }
     emit('plan-created', currentTradePlanId.value);
     closeModal();
   };
@@ -1188,6 +1228,7 @@
     flex-direction: column;
     gap: 1rem;
     min-height: 0; /* Ensure flex child can shrink */
+    overflow-y: scroll; /* Always show scrollbar */
   }
 
   .message {

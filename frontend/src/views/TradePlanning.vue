@@ -291,7 +291,7 @@ const cancelDelete = () => {
 };
 
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString();
+  return new Date(date).toLocaleString();
 };
 
 const formatRelativeTime = (dateString) => {
