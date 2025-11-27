@@ -47,7 +47,7 @@ const tradePlanSchema = Joi.object({
 // Validation schema for trade plan update
 const tradePlanUpdateSchema = Joi.object({
   asset: Joi.string().min(1).max(50)
-    .pattern(/^[a-zA-Z0-9\-\/]+$/)
+    .pattern(/^[a-zA-Z0-9\-\/\s]+$/)
     .optional(),
   direction: Joi.string().valid('long', 'short').optional(),
   timeframe: Joi.string().valid('1m', '5m', '15m', '1h', '4h', '1d', '1w').optional(),
