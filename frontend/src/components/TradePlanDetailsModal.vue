@@ -5,10 +5,10 @@
       <div class="modal-header">
         <div class="header-left">
           <h2 class="modal-title">{{ formattedTitle }}</h2>
-          <div class="trade-info">
-            <span class="trade-asset">{{ tradePlan.asset }}</span>
-            <span class="trade-direction" :class="tradePlan.direction">{{ tradePlan.direction }}</span>
-            <span class="trade-timeframe">{{ tradePlan.timeframe }}</span>
+          <div class="trade-info" v-if="tradePlan">
+            <span class="trade-asset">{{ tradePlan.asset || 'Not set' }}</span>
+            <span class="trade-direction" :class="tradePlan.direction">{{ tradePlan.direction || 'Not set' }}</span>
+            <span class="trade-timeframe">{{ tradePlan.timeframe || 'Not set' }}</span>
           </div>
         </div>
         <div class="header-right">
@@ -81,7 +81,7 @@
                 <div class="detail-grid">
                   <div class="detail-item">
                     <span class="detail-label">Asset:</span>
-                    <span class="detail-value">{{ tradePlan.asset }}</span>
+                    <span class="detail-value">{{ tradePlan.asset || 'Not set' }}</span>
                   </div>
                   <div class="detail-item">
                     <span class="detail-label">Direction:</span>
@@ -89,12 +89,12 @@
                       class="detail-value" 
                       :class="{ long: tradePlan.direction === 'long', short: tradePlan.direction === 'short' }"
                     >
-                      {{ tradePlan.direction }}
+                      {{ tradePlan.direction || 'Not set' }}
                     </span>
                   </div>
                   <div class="detail-item">
                     <span class="detail-label">Timeframe:</span>
-                    <span class="detail-value">{{ tradePlan.timeframe }}</span>
+                    <span class="detail-value">{{ tradePlan.timeframe || 'Not set' }}</span>
                   </div>
                   <div class="detail-item">
                     <span class="detail-label">Status:</span>
@@ -118,12 +118,12 @@
               </div>
               <div class="section-content" v-if="expandedSections.emotionalState">
                 <div class="emotional-state">
-                  <div class="emotion-display" v-if="tradePlan.emotionalState.state">
+                  <div class="emotion-display" v-if="tradePlan.emotionalState?.state">
                     <span class="emotion-label">Current Emotion:</span>
                     <span class="emotion-value">{{ tradePlan.emotionalState.state }}</span>
                   </div>
                   
-                  <div class="body-signals" v-if="tradePlan.emotionalState.bodySignals && tradePlan.emotionalState.bodySignals.length > 0">
+                  <div class="body-signals" v-if="tradePlan.emotionalState?.bodySignals && tradePlan.emotionalState.bodySignals.length > 0">
                     <h5 class="subsection-title">Body Signals</h5>
                     <div class="signal-list">
                       <div 
@@ -137,12 +137,12 @@
                     </div>
                   </div>
 
-                  <div class="emotional-notes" v-if="tradePlan.emotionalState.notes">
+                  <div class="emotional-notes" v-if="tradePlan.emotionalState?.notes">
                     <h5 class="subsection-title">Notes</h5>
                     <p class="notes-text">{{ tradePlan.emotionalState.notes }}</p>
                   </div>
 
-                  <div class="ai-analysis" v-if="tradePlan.emotionalState.aiAnalysis">
+                  <div class="ai-analysis" v-if="tradePlan.emotionalState?.aiAnalysis">
                     <h5 class="subsection-title">Aria's Analysis</h5>
                     <p class="analysis-text">{{ tradePlan.emotionalState.aiAnalysis }}</p>
                   </div>
