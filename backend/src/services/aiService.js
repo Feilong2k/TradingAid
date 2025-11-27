@@ -93,11 +93,12 @@ Please respond as Aria, the supportive trading coach. Your response should:
 1. Acknowledge the user's message naturally
 2. Provide emotional support and guidance
 3. Ask thoughtful questions to encourage self-reflection
-4. Keep responses concise (2-3 sentences maximum)
-5. Maintain a warm, caring friend tone
-6. Guide the conversation toward emotional awareness and trading readiness
+4. Offer proactive suggestions when appropriate (like taking a 5-minute break, breathing exercises, or reconsidering the trade)
+5. Keep responses concise (2-3 sentences maximum)
+6. Maintain a warm, caring friend tone
+7. Guide the conversation toward emotional awareness and trading readiness
 
-Remember: You're helping the user through an emotional check before trading. Focus on their emotional state and readiness.
+Remember: You're helping the user through an emotional check before trading. Focus on their emotional state and readiness. Be proactive with suggestions when the user shows signs of stress or pressure.
 `;
 
     return await this.callDeepseek(userId, prompt, 'deepseek-reasoner');
@@ -107,6 +108,17 @@ Remember: You're helping the user through an emotional check before trading. Foc
     try {
       // Get conversation history for context continuity
       const history = this.conversationHistory.get(userId) || [];
+
+      // If API key is not configured, return a graceful fallback response
+      if (!DEEPSEEK_API_KEY) {
+        const aiResponse = this.generateFallbackResponse(prompt);
+        history.push(
+          { role: 'user', content: prompt },
+          { role: 'assistant', content: aiResponse }
+        );
+        this.conversationHistory.set(userId, history);
+        return aiResponse;
+      }
       
       const messages = [
         { role: 'system', content: getSystemPrompt() },
@@ -144,7 +156,33 @@ Remember: You're helping the user through an emotional check before trading. Foc
       return aiResponse;
     } catch (error) {
       console.error('Deepseek API error:', error);
-      throw new Error('AI service temporarily unavailable');
+      // Graceful fallback instead of failing the request
+      const history = this.conversationHistory.get(userId) || [];
+      const aiResponse = this.generateFallbackResponse(prompt);
+      history.push(
+        { role: 'user', content: prompt },
+        { role: 'assistant', content: aiResponse }
+      );
+      this.conversationHistory.set(userId, history);
+      return aiResponse;
+    }
+  }
+
+  // Fallback response generator when AI service is unavailable
+  generateFallbackResponse(prompt) {
+    try {
+      if (prompt && prompt.includes('TRADING CONTEXT CHECK-IN')) {
+        return "Before we dive in, take a slow breath and do a quick check-in: how are you feeling right now (one or two words)? This helps you trade with clarity and discipline. When you’re ready, share your current emotion.";
+      }
+      if (prompt && prompt.includes('EMOTIONAL QUESTIONNAIRE ANALYSIS')) {
+        return "Thanks for sharing your responses. Based on this, let’s focus on trading readiness and one actionable step to stay disciplined. Keep it slow and deliberate—confirm how you feel before proceeding.";
+      }
+      if (prompt && prompt.includes('EMOTIONAL CHECK CHAT')) {
+        return "I hear you. Let’s pause for a moment—what’s the strongest feeling you notice in your body right now, and how intense is it (1–10)?";
+      }
+      return "Let’s start with a quick emotional check-in. How are you feeling right now (one or two words)? We’ll proceed step-by-step from there.";
+    } catch {
+      return "Let’s begin with a quick emotional check-in. How are you feeling right now?";
     }
   }
 
