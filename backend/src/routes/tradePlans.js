@@ -30,7 +30,7 @@ router.get('/open', authenticateToken, async (req, res) => {
   try {
     const openTradePlans = await TradePlan.find({ 
       userId: req.user._id,
-      status: 'open'
+      status: { $in: ['open', 'emotional_check', 'technical_analysis', 'planning', 'monitoring'] }
     }).sort({ createdAt: -1 });
     
     res.json(openTradePlans);
