@@ -1,3 +1,19 @@
+## Update - November 27, 2025 — Emotional Check Chat Flow and Logging
+
+- Immediate system onboarding message (role: system) is shown as soon as the Emotional Check step opens. It is local-only, not persisted, and improves perceived responsiveness.
+- Removed background non-stream analyze-emotions call. No more slow, non-streamed first replies that look “non-Aria”.
+- Submit Emotional Check now triggers true streaming (SSE) from /api/trade-plans/:id/chat/stream. The payload includes:
+  - message (constructed from emotion + body signals + intensities)
+  - emotionalState (sanitized)
+  - todayTrades (from /api/trade-plans/today-trades; future MT5 ingest will supply richer data)
+- Backend accepts optional todayTrades in both /chat and /chat/stream and injects contextual system notes (first trade of day, open/completed counts).
+- AI service (analyzeChatMessage) now includes a compact “today’s trades context” block in prompts while maintaining strict emotional-focus boundaries.
+- Console logging is gated:
+  - Frontend: set VITE_DEBUG=true to enable dlog(...) diagnostics; default production builds are quiet.
+  - Backend: logs gated by NODE_ENV/DEBUG flags to reduce noise in production.
+
+This aligns Aria’s first visible content with a fast “system” guide and ensures all assistant replies in the emotional phase stream consistently.
+
 # TradeAid2 - Knowledge Transfer Document
 
 ## Project Overview

@@ -64,7 +64,7 @@ Keep it supportive and actionable, not overwhelming.
   }
 
   // Analyze chat message during emotional check conversation
-  async analyzeChatMessage(userId, userMessage, emotionalState, conversationHistory = []) {
+  async analyzeChatMessage(userId, userMessage, emotionalState, conversationHistory = [], todayTrades = []) {
     // Format conversation history for context
     const conversationContext = conversationHistory
       .slice(-6) // Last 6 messages for context
@@ -72,6 +72,10 @@ Keep it supportive and actionable, not overwhelming.
       .join('\n');
 
     const currentEmotion = emotionalState?.state ? `Current emotion: ${emotionalState.state}` : 'No emotion selected yet';
+    const totalTrades = Array.isArray(todayTrades) ? todayTrades.length : 0;
+    const openTrades = Array.isArray(todayTrades) ? todayTrades.filter(t => t.status === 'entered').length : 0;
+    const completedTrades = Array.isArray(todayTrades) ? todayTrades.filter(t => t.status === 'completed').length : 0;
+    const firstTradeOfDay = totalTrades === 0 ? 'yes' : 'no';
 
     const prompt = `
 EMOTIONAL CHECK CHAT:
@@ -81,6 +85,9 @@ ${conversationContext || 'No previous conversation'}
 
 CURRENT EMOTIONAL STATE:
 ${currentEmotion}
+
+TODAY'S TRADES CONTEXT:
+- Total: ${totalTrades}, Open: ${openTrades}, Completed: ${completedTrades}, FirstTradeOfDay: ${firstTradeOfDay}
 
 USER'S MESSAGE:
 "${userMessage}"

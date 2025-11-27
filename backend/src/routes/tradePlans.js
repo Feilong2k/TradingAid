@@ -9,6 +9,9 @@ import { getSystemPrompt } from '../config/aiPersonality.js';
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1';
 
+const DEBUG = process.env.NODE_ENV !== 'production' && process.env.DEBUG !== 'false';
+const dlog = (...args) => { if (DEBUG) console.log(...args); };
+
 const router = express.Router();
 
 // Get user's trade plans
@@ -105,7 +108,7 @@ router.get('/today-trades', authenticateToken, async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    console.log('Fetching today trades for user:', req.user._id);
+    dlog('Fetching today trades for user:', req.user._id);
     
     const todayTrades = await TradePlan.find({
       userId: req.user._id,
@@ -113,7 +116,7 @@ router.get('/today-trades', authenticateToken, async (req, res) => {
       status: { $in: ['completed', 'entered'] }
     }).sort({ createdAt: -1 });
     
-    console.log(`Found ${todayTrades.length} trades today for user ${req.user._id}`);
+    dlog(`Found ${todayTrades.length} trades today for user ${req.user._id}`);
     
     res.json(todayTrades);
   } catch (error) {
@@ -124,8 +127,15 @@ router.get('/today-trades', authenticateToken, async (req, res) => {
 
 // Stream chat with Aria (SSE) - persist only on [DONE]
 router.post('/:id/chat/stream', authenticateToken, async (req, res) => {
+  dlog('BACKEND: Starting stream chat endpoint', {
+    tradePlanId: req.params.id,
+    userId: req.user._id,
+    messageLength: req.body.message?.length,
+    hasEmotionalState: !!req.body.emotionalState
+  });
+
   try {
-    const { message, emotionalState } = req.body;
+    const { message, emotionalState, todayTrades } = req.body;
 
     const tradePlan = await TradePlan.findOne({
       _id: req.params.id,
@@ -133,6 +143,7 @@ router.post('/:id/chat/stream', authenticateToken, async (req, res) => {
     });
 
     if (!tradePlan) {
+      dlog('BACKEND: Trade plan not found');
       return res.status(404).json({ error: 'Trade plan not found' });
     }
 
@@ -142,11 +153,40 @@ router.post('/:id/chat/stream', authenticateToken, async (req, res) => {
       content: m.content
     }));
 
-    const messages = [
-      { role: 'system', content: getSystemPrompt() },
+    // Build contextual system note for Aria (emotional state + today's trades, if provided)
+    const contextLines = [];
+    if (emotionalState?.state) {
+      const signals = Array.isArray(emotionalState.bodySignals)
+        ? emotionalState.bodySignals
+            .filter(s => s && s.signal)
+            .map(s => `${s.signal} (${s.intensity}/10)`)
+        : [];
+      let line = `Current emotion: ${emotionalState.state}`;
+      if (signals.length) line += `; Body signals: ${signals.join(', ')}`;
+      if (emotionalState.notes) line += `; Notes: ${emotionalState.notes}`;
+      contextLines.push(line);
+    }
+    if (Array.isArray(todayTrades)) {
+      const total = todayTrades.length;
+      const entered = todayTrades.filter(t => t.status === 'entered').length;
+      const completed = todayTrades.filter(t => t.status === 'completed').length;
+      contextLines.push(`Today's trades summary: total ${total}, open ${entered}, completed ${completed}, firstTradeOfDay: ${total === 0 ? 'yes' : 'no'}.`);
+    }
+
+    let messages = [{ role: 'system', content: getSystemPrompt() }];
+    if (contextLines.length) {
+      messages.push({
+        role: 'system',
+        content: `Context for emotional check:\n${contextLines.join('\n')}\nKeep responses focused on emotions and coping strategies. Do not discuss technical analysis at this stage.`
+      });
+    }
+    messages = [
+      ...messages,
       ...history,
       { role: 'user', content: message }
     ];
+
+    dlog('BACKEND: Prepared messages for AI, count:', messages.length);
 
     // SSE headers
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -155,6 +195,7 @@ router.post('/:id/chat/stream', authenticateToken, async (req, res) => {
     res.flushHeaders?.();
 
     if (!DEEPSEEK_API_KEY) {
+      dlog('BACKEND: No DEEPSEEK_API_KEY, using fallback response');
       // Fallback when no API key: send a short canned response, then DONE
       const canned = "Let's focus on your emotional state. What's the strongest feeling you notice right now, and what simple step could help ease it?";
       res.write(`data: ${JSON.stringify({ delta: canned })}\n\n`);
@@ -163,6 +204,7 @@ router.post('/:id/chat/stream', authenticateToken, async (req, res) => {
       return res.end();
     }
 
+    dlog('BACKEND: Making request to DeepSeek API...');
     const upstream = await axios.post(
       `${DEEPSEEK_BASE_URL}/chat/completions`,
       {
@@ -180,15 +222,21 @@ router.post('/:id/chat/stream', authenticateToken, async (req, res) => {
       }
     );
 
+    dlog('BACKEND: DeepSeek API connected, starting stream processing');
     let fullText = '';
     let sawDone = false;
+    let tokenCount = 0;
 
     upstream.data.on('data', (chunk) => {
       const lines = chunk.toString('utf8').split('\n').filter(Boolean);
+      dlog(`BACKEND: Received ${lines.length} lines from DeepSeek`);
+      
       for (const line of lines) {
         if (!line.startsWith('data:')) continue;
         const payload = line.slice('data:'.length).trim();
+        
         if (payload === '[DONE]') {
+          dlog('BACKEND: Received [DONE] from DeepSeek, stream complete');
           sawDone = true;
           res.write(`data: [DONE]\n\n`);
           // Persist both user and assistant messages only after DONE
@@ -206,8 +254,9 @@ router.post('/:id/chat/stream', authenticateToken, async (req, res) => {
                 timestamp: new Date()
               });
               await tradePlan.save();
+              dlog('BACKEND: Saved conversation to database');
             } catch (e) {
-              console.error('Error saving streamed conversation:', e);
+              console.error('BACKEND: Error saving streamed conversation:', e);
             } finally {
               if (!res.writableEnded) res.end();
             }
@@ -218,19 +267,26 @@ router.post('/:id/chat/stream', authenticateToken, async (req, res) => {
           const json = JSON.parse(payload);
           const delta = json?.choices?.[0]?.delta?.content ?? '';
           if (delta) {
+            tokenCount++;
             fullText += delta;
+            if (tokenCount <= 3 || tokenCount % 10 === 0) {
+              dlog(`BACKEND: Token ${tokenCount}: "${delta}"`);
+            }
             res.write(`data: ${JSON.stringify({ delta })}\n\n`);
           }
         } catch (e) {
           // Ignore malformed lines / heartbeats
+          dlog('BACKEND: Ignoring malformed line:', e.message);
         }
       }
     });
 
     upstream.data.on('end', () => {
+      dlog('BACKEND: Upstream stream ended, sawDone:', sawDone);
       if (!sawDone) {
         // Upstream ended without DONE; don't persist
         if (!res.writableEnded) {
+          dlog('BACKEND: Stream ended without [DONE]');
           res.write(`data: ${JSON.stringify({ error: 'stream_ended' })}\n\n`);
           res.write(`data: [DONE]\n\n`);
           res.end();
@@ -239,7 +295,7 @@ router.post('/:id/chat/stream', authenticateToken, async (req, res) => {
     });
 
     upstream.data.on('error', (err) => {
-      console.error('DeepSeek stream error:', err?.message || err);
+      console.error('BACKEND: DeepSeek stream error:', err?.message || err);
       if (!res.writableEnded) {
         res.write(`data: ${JSON.stringify({ error: 'stream_error' })}\n\n`);
         res.write(`data: [DONE]\n\n`);
@@ -247,7 +303,7 @@ router.post('/:id/chat/stream', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error in chat stream:', {
+    console.error('BACKEND: Error in chat stream:', {
       message: error.message,
       stack: error.stack,
       tradePlanId: req.params.id,
@@ -341,7 +397,7 @@ router.post('/:id/analyze-emotions', authenticateToken, async (req, res) => {
 // Chat with Aria for emotional check
 router.post('/:id/chat', authenticateToken, async (req, res) => {
   try {
-    const { message, emotionalState } = req.body;
+    const { message, emotionalState, todayTrades } = req.body;
     
     // Get the trade plan
     const tradePlan = await TradePlan.findOne({
@@ -372,7 +428,8 @@ router.post('/:id/chat', authenticateToken, async (req, res) => {
         req.user._id.toString(),
         message,
         emotionalState,
-        tradePlan.conversation
+        tradePlan.conversation,
+        todayTrades || []
       );
     } catch (aiError) {
       console.error('AI service error in chat:', aiError);
@@ -382,7 +439,7 @@ router.post('/:id/chat', authenticateToken, async (req, res) => {
     
     // Ensure response is not truncated - add minimum length check
     if (aiResponse && aiResponse.length < 50) {
-      console.warn('AI response seems truncated, adding follow-up:', aiResponse);
+      dlog('AI response seems truncated, adding follow-up:', aiResponse);
       aiResponse += " Let's continue exploring this together. What else are you noticing about how you're feeling?";
     }
     
@@ -400,7 +457,7 @@ router.post('/:id/chat', authenticateToken, async (req, res) => {
           timestamp: new Date()
         });
         await tradePlan.save();
-        console.log('AI response saved to conversation');
+        dlog('AI response saved to conversation');
       } catch (saveError) {
         console.error('Error saving AI response to conversation:', saveError);
       }
