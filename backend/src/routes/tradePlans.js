@@ -136,6 +136,11 @@ router.post('/:id/analyze-emotions', authenticateToken, async (req, res) => {
         todayTrades || []
       );
       
+      // Ensure conversation array exists before pushing
+      if (!tradePlan.conversation) {
+        tradePlan.conversation = [];
+      }
+      
       // Save initial AI message to conversation
       tradePlan.conversation.push({
         role: 'assistant',
@@ -176,6 +181,11 @@ router.post('/:id/chat', authenticateToken, async (req, res) => {
     
     if (!tradePlan) {
       return res.status(404).json({ error: 'Trade plan not found' });
+    }
+    
+    // Ensure conversation array exists before pushing
+    if (!tradePlan.conversation) {
+      tradePlan.conversation = [];
     }
     
     // Save user message to conversation

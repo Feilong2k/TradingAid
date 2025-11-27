@@ -63,7 +63,10 @@ const tradePlanSchema = new mongoose.Schema({
   emotionalState: emotionalStateSchema,
   
   // Chat Conversation
-  conversation: [chatMessageSchema],
+  conversation: {
+    type: [chatMessageSchema],
+    default: []
+  },
   
   // Workflow Status
   status: {

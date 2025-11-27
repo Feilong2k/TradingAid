@@ -385,6 +385,13 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 - **Prevent 500 Errors**: Backend no longer returns 500 errors for AI service failures, provides graceful response instead
 - **Files**: `backend/src/routes/tradePlans.js` (chat endpoint)
 
+#### Conversation Array Initialization Fix
+- **Root Cause**: 500 errors in analyze-emotions endpoint due to undefined conversation array
+- **Model Fix**: Added default: [] to conversation field in TradePlan schema
+- **Defensive Guards**: Added checks in both analyze-emotions and chat endpoints to ensure conversation array exists
+- **Prevent TypeError**: No more "Cannot read properties of undefined (reading 'push')" errors
+- **Files**: `backend/src/models/TradePlan.js`, `backend/src/routes/tradePlans.js`
+
 ### Reliability & Fallback Improvements (November 26, 2025)
 
 #### Backend AI Fallback
