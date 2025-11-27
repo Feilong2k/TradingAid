@@ -510,8 +510,20 @@
       
       await addAriaMessage(response.data.aiResponse);
     } catch (error) {
-      console.error('Error sending message:', error);
-      await addAriaMessage("I'm having trouble processing your message right now. Let's continue with our emotional check.");
+      console.error('Error sending message:', {
+        status: error?.response?.status,
+        data: error?.response?.data,
+        message: error?.message,
+        url: error?.config?.url,
+        tradePlanId: currentTradePlanId.value
+      });
+      
+      // More helpful fallback responses based on the context
+      if (conversation.value.length === 0) {
+        await addAriaMessage("Let's start with a quick emotional check-in. How are you feeling right now? Take a moment to notice any physical sensations or emotions that come up.");
+      } else {
+        await addAriaMessage("Thanks for sharing. Let's continue exploring your emotional state. What else are you noticing about how you're feeling right now?");
+      }
     }
   };
 
