@@ -96,6 +96,7 @@
           <div class="modal-header">
             <h2>Emotional Check with Aria</h2>
             <div class="step-indicator">Step 2 of 3</div>
+            <button class="close-btn" @click="closeModal">×</button>
           </div>
           
           <div class="emotional-check-container">
@@ -218,6 +219,14 @@
                   <button class="add-signal-btn" @click="addBodySignal">
                     + Add Body Signal
                   </button>
+                </div>
+
+                <!-- Submit Emotional Check Button -->
+                <div v-if="emotionalState.state" class="submit-emotional-check">
+                  <button class="btn-primary submit-btn" @click="submitEmotionalCheck">
+                    📤 Submit Emotional Check
+                  </button>
+                  <p class="submit-description">Send your selected emotion and body signals to Aria for analysis</p>
                 </div>
               </div>
 
@@ -377,7 +386,7 @@
     emotionalState.value.bodySignals.splice(index, 1);
   };
 
-  const selectEmotion = async (emotion) => {
+  const selectEmotion = (emotion) => {
     emotionalState.value.state = emotion.value;
     // Reset body signals when switching emotions
     if (emotion.type === 'positive') {
@@ -385,19 +394,38 @@
     } else if (emotionalState.value.bodySignals.length === 0) {
       emotionalState.value.bodySignals = [{ signal: '', intensity: 5 }];
     }
-    
-    // Add emotion selection to chat
-    addUserMessage(`I'm feeling ${emotion.label.toLowerCase()}`);
-    
-    // Trigger AI response to emotion selection
-    await triggerAriaEmotionResponse(emotion);
   };
 
-  const triggerAriaEmotionResponse = async (emotion) => {
+  const submitEmotionalCheck = async () => {
+    if (!emotionalState.value.state) {
+      alert('Please select an emotion first');
+      return;
+    }
+
+    const currentEmotion = emotionalStates.value.find(e => e.value === emotionalState.value.state);
+    
+    // Build message with emotion and body signals
+    let message = `I'm feeling ${currentEmotion.label.toLowerCase()}`;
+    
+    // Add body signals if they exist and are filled
+    const filledBodySignals = emotionalState.value.bodySignals.filter(signal => 
+      signal.signal && signal.signal.trim() !== ''
+    );
+    
+    if (filledBodySignals.length > 0) {
+      const signalsText = filledBodySignals.map(signal => 
+        `${signal.signal} (intensity: ${signal.intensity}/10)`
+      ).join(', ');
+      message += `. Body signals: ${signalsText}`;
+    }
+    
+    // Add emotion selection to chat
+    addUserMessage(message);
+    
     try {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
       const response = await axios.post(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/chat`, {
-        message: `I just selected ${emotion.label.toLowerCase()} as my emotional state`,
+        message: message,
         emotionalState: emotionalState.value
       }, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
@@ -405,8 +433,8 @@
       
       await addAriaMessage(response.data.aiResponse);
     } catch (error) {
-      console.error('Error triggering AI response for emotion:', error);
-      await addAriaMessage("I notice you've selected an emotional state. Let's explore this feeling together.");
+      console.error('Error submitting emotional check:', error);
+      await addAriaMessage("Thank you for sharing your emotional state. Let's explore this feeling together.");
     }
   };
 
@@ -501,25 +529,30 @@
       
       currentTradePlanId.value = response.data._id;
       
+      // Switch to emotional check immediately
+      currentStep.value = 2;
+      
       // Get today's trades for AI analysis
       const todayTradesResponse = await axios.get(`${apiBaseUrl}/api/trade-plans/today-trades`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
       });
       
-      // Get initial AI message
-      const aiResponse = await axios.post(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/analyze-emotions`, {
-        emotionalData: emotionalState.value,
-        todayTrades: todayTradesResponse.data
-      }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
-      });
-      
-      currentStep.value = 2;
-      
-      // Add initial AI message to chat after a brief delay
-      setTimeout(() => {
-        addAriaMessage(aiResponse.data.aiAnalysis);
-      }, 500);
+      // Get initial AI message in background
+      setTimeout(async () => {
+        try {
+          const aiResponse = await axios.post(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/analyze-emotions`, {
+            emotionalData: emotionalState.value,
+            todayTrades: todayTradesResponse.data
+          }, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+          });
+          
+          await addAriaMessage(aiResponse.data.aiAnalysis);
+        } catch (error) {
+          console.error('Error getting AI analysis:', error);
+          await addAriaMessage("Welcome! Let's start with an emotional check-in. How are you feeling right now?");
+        }
+      }, 100);
       
     } catch (error) {
       console.error('Error proceeding to emotional check:', {
@@ -750,11 +783,11 @@
     max-width: 95vw;
     width: 1200px;
     max-height: 90vh;
-    height: 700px;
+    height: 800px;
     overflow: hidden;
     position: relative;
     min-width: 900px;
-    min-height: 550px;
+    min-height: 600px;
     display: flex;
     flex-direction: column;
     resize: both;
@@ -1210,6 +1243,30 @@
     width: 100%;
     cursor: pointer;
     color: #6c757d;
+  }
+
+  /* Submit Emotional Check Section */
+  .submit-emotional-check {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    text-align: center;
+    border: 2px solid #e9ecef;
+  }
+
+  .submit-btn {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .submit-description {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin: 0;
+    line-height: 1.4;
   }
 
   .modal-actions {
