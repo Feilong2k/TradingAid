@@ -944,7 +944,7 @@
   /* Emotional Check Container - Two Column Layout */
   .emotional-check-container {
     display: grid;
-    grid-template-columns: 1fr 450px;
+    grid-template-columns: 1fr 1fr;
     gap: 0;
     height: 650px;
   }
