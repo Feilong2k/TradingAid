@@ -643,3 +643,36 @@ This development plan ensures that the existing AI personality is fully leverage
 5. Workflow extensions (from Phase 3 plan)
    - Implement 5-minute break timer endpoints and UI
    - Persist and display timer status in the modal and details
+
+---
+
+## Corrigendum - November 27, 2025 (UI behavior, sanitation, and plan alignment)
+
+To reflect the actual implementation in the frontend and prevent confusion:
+
+- Streaming UI behavior (frontend)
+  - The transport is SSE, and the UI renders character-by-character typing per SSE delta to produce a smooth ChatGPT-like experience.
+  - The assistant message is created as a Vue reactive object so `content += char` triggers reactivity.
+  - Each character forces a DOM paint between updates: `await nextTick()` then `requestAnimationFrame(...)`, followed by a small delay (~12ms + random variation) and auto scroll-to-bottom.
+
+- Emotional-state PATCH sanitation
+  - Before PATCHing `emotionalState`, the frontend now:
+    - Filters out empty body signal rows
+    - Clamps intensity to [1..10] and defaults invalid inputs to 5
+    - Preserves notes
+  - This prevents 400 errors and improves data quality.
+
+- Configuration fetch status
+  - The modal successfully fetches assets, timeframes (collections), emotions, and body signals from `/api/config`. Fallbacks are still present for development.
+
+- Active Trades page status
+  - The Active Trades page and route have been removed. Any prior references are historical; the current navigation no longer includes it.
+
+- Timeline alignment (Phase 0)
+  - Phase 0 configuration fetch is effectively implemented on the frontend. Back-end configuration model/endpoints exist; admin UI remains a future enhancement.
+
+- Updated immediate next steps (prioritized)
+  1) Add basic rate limiting on chat endpoints
+  2) Add cancel/stop during long responses and polish thinking→typing transitions
+  3) Implement 5-minute break timer (backend endpoints + minimal UI)
+  4) Minimal trading-context endpoint + prompt infusion for first Aria reply

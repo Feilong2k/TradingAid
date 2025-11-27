@@ -543,51 +543,127 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 - **Production URL**: https://tradingaid.netlify.app
 - **Backend API**: https://tradingaid.onrender.com
 
-## Chat Streaming and Trade Details Enhancements (November 27, 2025)
+## Comprehensive UI Improvements and Streaming Fixes (November 27, 2025)
 
 ### Implemented Changes
-- Frontend (NewTradePlanModal.vue)
-  - Streaming-style chat replies: assistant messages now "type out" character-by-character for a ChatGPT-like experience
-  - Typing indicator and brief "thinking" delay for natural pacing
-  - Auto-scroll maintained during streaming
-- Backend (tradePlans.js)
-  - Non-blocking chat responses: the chat endpoint returns the AI response immediately and saves the assistant message to the DB asynchronously, unblocking the UI
-  - Response quality guard: minimal-length check with a gentle follow-up appended if the response looks truncated
-  - Route ordering fix: moved /today-trades above /:id to prevent parameter route capture
-- Model (TradePlan.js)
-  - chatMessageSchema.content now defaults to '' so streaming/empty-initial content doesn’t violate Mongoose required constraints
-- Trade Plan Details (TradePlanDetailsModal.vue)
-  - Emotional check section displays:
-    - Current emotion
-    - Body signals with intensity values
-    - Optional notes and Aria’s analysis (if present)
 
-### Short-term Next Steps
-1. Thinking process display
-   - Add a lightweight “thinking steps” indicator in the chat header (e.g., “Reviewing context… → Formulating response…”), without exposing chain-of-thought. This will show progress while the model generates.
-2. True server-driven streaming
-   - Upgrade to Server-Sent Events (SSE) or fetch-stream parsing when the upstream model supports token streaming. Current implementation is front-end simulated streaming; API returns full text quickly with non-blocking persistence.
-3. Trade plan details polish
-   - Keep the Emotional State card at parity with modal data entry and ensure new fields (if any) remain in sync.
+#### 1. Time Display Enhancement
+- **Current Plans Pane**: Updated `formatDate` function in `TradePlanning.vue` to show time alongside date using `toLocaleString()`
+- **User Experience**: Users can now see exact creation time of trade plans (MM/DD/YYYY HH:MM AM/PM format)
 
-## True Streaming Upgrade (November 27, 2025 - SSE)
+#### 2. Scroll Bar Visibility Fix
+- **Modal Chat**: Added `overflow-y: scroll` to chat messages container in `NewTradePlanModal.vue`
+- **Consistent UX**: Scrollbars now always visible when content overflows, eliminating need to resize modal
 
-- Backend
-  - Added POST /api/trade-plans/:id/chat/stream using Server-Sent Events (SSE) to proxy DeepSeek stream (stream: true)
-  - Streams tokens to the client as JSON frames: data: {"delta": "..."} and terminates with data: [DONE]
-  - Persists conversation to MongoDB only when [DONE] is received (saves user message and full assistant message together)
-  - Robust error handling: if the upstream stream ends without [DONE] or errors, no DB write occurs and an error frame is sent to client
-  - No compression on this response path (Express doesn’t use compression here); long-lived responses are supported
+#### 3. Trade History Page Functionality
+- **Real Data Integration**: `TradeHistory.vue` now loads completed trade plans from backend API
+- **Clickable Plans**: Added `TradePlanDetailsModal` integration - clicking "Review" opens detailed view
+- **Navigation Update**: Removed Active Trades link from Trade History navigation
+- **API Integration**: Fetches trade plans with status 'completed', 'passed_over', 'cancelled'
 
-- Frontend
-  - Removed simulated character-by-character typing
-  - Chat now uses fetch streaming to read SSE frames and update the assistant message incrementally
-  - Fail-safe:
-    - If first token isn’t received within a short timeout or the stream errors, it aborts and falls back to POST /api/trade-plans/:id/chat (bundled reply)
-    - UI finalizes the assistant message cleanly in both stream and fallback modes
+#### 4. Active Trades Page Removal
+- **Component Deletion**: Removed `ActiveTrades.vue` file as per user request
+- **Router Update**: Updated `main.js` to remove Active Trades route
+- **Navigation Cleanup**: Updated navigation in `TradePlanning.vue` and `TradeHistory.vue`
 
-- Result
-  - Real-time token streaming UX with graceful fallback to bundled replies when streaming is unavailable
-  - Data integrity: messages are saved to MongoDB only on successful stream completion ([DONE])
+#### 5. DeepSeek Streaming Improvements
+- **Enhanced Timeout**: Increased streaming timeout from 3.5s to 10s for better reliability
+- **Better Error Handling**: Added comprehensive logging and error tracking
+- **Token Detection**: Improved first token detection with console logging for debugging
+- **Stream Completion**: Enhanced [DONE] handling with continuation text for short responses
+
+#### 6. Truncated Answers Prevention
+- **Minimum Length Checks**: Added checks for assistant message length (100 chars for [DONE], 150 chars for incomplete streams)
+- **Continuation Text**: Automatically appends engagement prompts to short responses:
+  - "Let's continue exploring this together. What else are you noticing?"
+  - "I'd love to hear more about your thoughts on this. What else comes to mind?"
+- **Fallback Enhancement**: Improved bundled reply fallback with better error context
+
+### Technical Implementation Details
+
+#### Frontend Changes
+- **TradePlanning.vue**: Updated date formatting and navigation
+- **TradeHistory.vue**: Complete rewrite with real data loading and modal integration
+- **NewTradePlanModal.vue**: Enhanced streaming with better timeout and truncation prevention
+- **main.js**: Updated router configuration
+
+#### Backend Integration
+- **API Endpoints**: Leveraged existing `/api/trade-plans` endpoint with status filtering
+- **Data Transformation**: Mapped backend trade plan data to frontend table structure
+- **Error Handling**: Comprehensive try-catch blocks with user-friendly fallbacks
+
+#### User Experience Improvements
+- **Immediate Feedback**: UI updates immediately after operations (deletion, creation)
+- **Consistent Navigation**: Cleaner navigation without Active Trades
+- **Better Visual Feedback**: Always-visible scrollbars and detailed timestamps
+- **Streaming Reliability**: More robust streaming with graceful fallbacks
+
+### Implementation Lessons
+- **Date Formatting**: Use `toLocaleString()` for combined date/time display
+- **Scroll Behavior**: Explicit `overflow-y: scroll` ensures consistent scrollbar visibility
+- **Streaming Reliability**: Longer timeouts and better error handling improve streaming success rates
+- **Data Filtering**: Clear status-based filtering ensures appropriate data display in each section
+- **Navigation Simplicity**: Removing unused pages improves user experience and reduces confusion
+
+*This document was updated to reflect comprehensive UI improvements and streaming fixes implemented on November 27, 2025.*
 
 *This document was generated based on comprehensive code review and security improvements implemented on November 26, 2025.*
+
+---
+
+## Update - November 27, 2025 (Streaming UI corrections and data sanitation)
+
+The streaming transport is Server-Sent Events (SSE) and the frontend renders assistant replies in a ChatGPT-like character-by-character style for a smooth UX.
+
+### Streaming UI behavior (frontend)
+- Assistant message object is now created as a Vue reactive object to ensure content mutations trigger re-rendering:
+  - `import { reactive } from 'vue'`
+  - `const assistantMessage = reactive({ id, role: 'assistant', content: '', ... })`
+- Character-by-character rendering is implemented per SSE delta with guaranteed DOM paints between characters:
+  - Uses `await nextTick()` followed by `await new Promise(r => requestAnimationFrame(r))` to force paint per character
+  - Small visible delay (≈12ms + slight randomness) to produce a natural typing effect
+  - Always scrolls the chat to bottom after each update
+- Stream lifecycle:
+  - On first token: switch indicators from “thinking” to “typing”
+  - On `[DONE]`: finalize, and if the reply is very short, append a gentle follow-up to avoid abrupt endings
+  - If the stream fails or times out: fallback to bundled `/chat` endpoint response and finalize cleanly
+
+### Emotional-state PATCH sanitation (frontend)
+- To prevent 400 errors and improve data quality, the emotional-state payload is sanitized before PATCH:
+```javascript
+const getSanitizedEmotionalState = () => {
+  const sanitizeIntensity = (n) => {
+    const num = Number(n);
+    if (Number.isNaN(num)) return 5;
+    return Math.max(1, Math.min(10, num));
+  };
+  const signals = Array.isArray(emotionalState.value.bodySignals)
+    ? emotionalState.value.bodySignals
+        .filter(s => s && typeof s.signal === 'string' && s.signal.trim() !== '')
+        .map(s => ({ signal: s.signal.trim(), intensity: sanitizeIntensity(s.intensity) }))
+    : [];
+  return {
+    state: emotionalState.value.state || '',
+    bodySignals: signals,
+    notes: emotionalState.value.notes || ''
+  };
+};
+```
+- PATCH endpoints now receive a clean payload:
+  - Filters out empty signals
+  - Clamps intensity to [1..10]
+  - Preserves notes when present
+
+### Configuration API verification
+- Modal logs confirm successful config fetch:
+  - Assets, timeframes (collections with label + timeframes[] + description), emotions, and body signals are loaded from `/api/config`
+  - Fallback defaults remain in place when API is unreachable in development
+
+### Documentation consistency
+- Active Trades page has been removed (router and navigation updated). Any historical references to “Active Trades integration” now reflect the current state: the page and route were removed as requested.
+
+### Next steps (tracked in development plan)
+- Add rate limiting to chat endpoints
+- Add cancel/stop button during long responses; polish thinking→typing transitions
+- Implement 5-minute break timer (backend endpoints + modal UI)
+- Minimal “trading context” endpoint + prompt infusion for first reply
