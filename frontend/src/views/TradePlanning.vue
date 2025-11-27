@@ -57,6 +57,15 @@
           @plan-created="handlePlanCreated"
         />
 
+        <!-- Trade Plan Details Modal -->
+        <TradePlanDetailsModal
+          v-if="showDetailsModal"
+          :trade-plan-id="selectedPlanId"
+          @close="showDetailsModal = false"
+          @plan-deleted="handlePlanDeleted"
+          @plan-continued="handlePlanContinued"
+        />
+
         <!-- Current Plans Section -->
         <div class="section">
           <h3 class="section-title">Current Plans</h3>
@@ -70,7 +79,12 @@
               </button>
             </div>
             
-            <div v-for="plan in currentPlans" :key="plan.id" class="plan-card">
+            <div 
+              v-for="plan in currentPlans" 
+              :key="plan.id" 
+              class="plan-card"
+              @click="openPlanDetails(plan.id)"
+            >
               <div class="plan-header">
                 <h4 class="plan-symbol">{{ plan.symbol }}</h4>
                 <span class="plan-status" :class="plan.status">{{ plan.status }}</span>
@@ -91,7 +105,7 @@
                   <span class="detail-value">{{ formatDate(plan.createdAt) }}</span>
                 </div>
               </div>
-              <div class="plan-actions">
+              <div class="plan-actions" @click.stop>
                 <button @click="continuePlan(plan.id)" class="action-btn small">Continue</button>
                 <button @click="deletePlan(plan.id)" class="action-btn small danger">Delete</button>
               </div>
@@ -118,6 +132,27 @@
           </div>
         </div>
       </div>
+
+      <!-- Delete Confirmation Popup -->
+      <div v-if="showDeleteConfirmation" class="confirmation-overlay">
+        <div class="confirmation-popup">
+          <div class="confirmation-header">
+            <h3 class="confirmation-title">Confirm Deletion</h3>
+          </div>
+          <div class="confirmation-content">
+            <p>Are you sure you want to delete this trade plan?</p>
+            <p class="confirmation-warning">This action cannot be undone.</p>
+          </div>
+          <div class="confirmation-actions">
+            <button @click="cancelDelete" class="confirmation-btn cancel">
+              Cancel
+            </button>
+            <button @click="confirmDelete" class="confirmation-btn confirm">
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 </template>
@@ -126,10 +161,15 @@
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth.js';
 import NewTradePlanModal from '../components/NewTradePlanModal.vue';
+import TradePlanDetailsModal from '../components/TradePlanDetailsModal.vue';
 import axios from 'axios';
 
 const authStore = useAuthStore();
 const showNewPlanModal = ref(false);
+const showDetailsModal = ref(false);
+const selectedPlanId = ref(null);
+const showDeleteConfirmation = ref(false);
+const planToDelete = ref(null);
 
 // Real data from API
 const currentPlans = ref([]);
@@ -187,14 +227,67 @@ const viewOpportunities = () => {
   console.log('Viewing opportunities');
 };
 
+const openPlanDetails = (planId) => {
+  selectedPlanId.value = planId;
+  showDetailsModal.value = true;
+};
+
 const continuePlan = (planId) => {
-  // TODO: Continue with existing plan
-  console.log('Continuing plan:', planId);
+  selectedPlanId.value = planId;
+  showDetailsModal.value = true;
+};
+
+const handlePlanDeleted = (planId) => {
+  // Remove from current plans immediately
+  currentPlans.value = currentPlans.value.filter(plan => plan.id !== planId);
+  
+  // Also remove from recent activity if present
+  recentActivity.value = recentActivity.value.filter(activity => activity.id !== planId);
+  
+  console.log('Trade plan deleted from details modal:', planId);
+};
+
+const handlePlanContinued = (tradePlan) => {
+  console.log('Continuing trade plan from details modal:', tradePlan);
+  // TODO: Implement continue functionality - open NewTradePlanModal in edit mode
+  // For now, just close the modal and show a message
+  alert('Continue functionality will be implemented in the next phase');
 };
 
 const deletePlan = (planId) => {
-  // TODO: Delete plan
-  console.log('Deleting plan:', planId);
+  planToDelete.value = planId;
+  showDeleteConfirmation.value = true;
+};
+
+const confirmDelete = async () => {
+  if (!planToDelete.value) return;
+
+  try {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    await axios.delete(`${apiBaseUrl}/api/trade-plans/${planToDelete.value}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+    });
+    
+    // Remove from current plans immediately
+    currentPlans.value = currentPlans.value.filter(plan => plan.id !== planToDelete.value);
+    
+    // Also remove from recent activity if present
+    recentActivity.value = recentActivity.value.filter(activity => activity.id !== planToDelete.value);
+    
+    console.log('Trade plan deleted successfully');
+    showDeleteConfirmation.value = false;
+    planToDelete.value = null;
+  } catch (error) {
+    console.error('Error deleting trade plan:', error);
+    alert('Failed to delete trade plan. Please try again.');
+    showDeleteConfirmation.value = false;
+    planToDelete.value = null;
+  }
+};
+
+const cancelDelete = () => {
+  showDeleteConfirmation.value = false;
+  planToDelete.value = null;
 };
 
 const formatDate = (date) => {
@@ -551,6 +644,99 @@ onMounted(() => {
 .activity-time {
   color: #6c757d;
   font-size: 0.85rem;
+}
+
+/* Delete Confirmation Popup Styles */
+.confirmation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.confirmation-popup {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 400px;
+  overflow: hidden;
+}
+
+.confirmation-header {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.confirmation-title {
+  color: #2c3e50;
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0;
+  text-align: center;
+}
+
+.confirmation-content {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.confirmation-content p {
+  color: #2c3e50;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.5;
+}
+
+.confirmation-warning {
+  color: #e74c3c !important;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 1.5rem 1.5rem;
+}
+
+.confirmation-btn {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.confirmation-btn.cancel {
+  background: #6c757d;
+  color: white;
+}
+
+.confirmation-btn.cancel:hover {
+  background: #5a6268;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+.confirmation-btn.confirm {
+  background: #e74c3c;
+  color: white;
+}
+
+.confirmation-btn.confirm:hover {
+  background: #c0392b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
 }
 
 @media (max-width: 768px) {
