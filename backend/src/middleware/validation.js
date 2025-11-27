@@ -85,6 +85,108 @@ const decisionUpdateSchema = Joi.object({
   decision: Joi.string().valid('proceed', 'proceed_caution', 'take_break', 'reconsider', 'passed').required()
 });
 
+// Validation schema for trade log creation (from MT5 EA)
+const tradeLogSchema = Joi.object({
+  mt5Ticket: Joi.string().required().min(1).max(50)
+    .messages({
+      'string.empty': 'MT5 ticket is required',
+      'string.max': 'MT5 ticket too long'
+    }),
+  symbol: Joi.string().required().min(1).max(20)
+    .messages({
+      'string.empty': 'Symbol is required',
+      'string.max': 'Symbol name too long'
+    }),
+  direction: Joi.string().valid('BUY', 'SELL').required()
+    .messages({
+      'any.only': 'Direction must be either BUY or SELL'
+    }),
+  volume: Joi.number().required().min(0.01).max(1000)
+    .messages({
+      'number.min': 'Volume must be at least 0.01',
+      'number.max': 'Volume too large'
+    }),
+  entryPrice: Joi.number().required().min(0.00001).max(1000000)
+    .messages({
+      'number.min': 'Invalid entry price',
+      'number.max': 'Invalid entry price'
+    }),
+  exitPrice: Joi.number().min(0.00001).max(1000000).optional()
+    .messages({
+      'number.min': 'Invalid exit price',
+      'number.max': 'Invalid exit price'
+    }),
+  profit: Joi.number().required().min(-1000000).max(1000000)
+    .messages({
+      'number.min': 'Invalid profit value',
+      'number.max': 'Invalid profit value'
+    }),
+  commission: Joi.number().min(0).max(10000).default(0)
+    .messages({
+      'number.min': 'Invalid commission value',
+      'number.max': 'Invalid commission value'
+    }),
+  swap: Joi.number().min(-10000).max(10000).default(0)
+    .messages({
+      'number.min': 'Invalid swap value',
+      'number.max': 'Invalid swap value'
+    }),
+  openTime: Joi.date().required()
+    .messages({
+      'date.base': 'Invalid open time'
+    }),
+  closeTime: Joi.date().optional()
+    .messages({
+      'date.base': 'Invalid close time'
+    }),
+  accountBalance: Joi.number().required().min(0).max(100000000)
+    .messages({
+      'number.min': 'Invalid account balance',
+      'number.max': 'Invalid account balance'
+    }),
+  accountEquity: Joi.number().required().min(0).max(100000000)
+    .messages({
+      'number.min': 'Invalid account equity',
+      'number.max': 'Invalid account equity'
+    }),
+  accountMargin: Joi.number().min(0).max(100000000).optional()
+    .messages({
+      'number.min': 'Invalid account margin',
+      'number.max': 'Invalid account margin'
+    }),
+  screenshot: Joi.string().max(10000000).optional() // Base64 string can be large
+    .messages({
+      'string.max': 'Screenshot data too large'
+    }),
+  apiKey: Joi.string().optional() // For MT5 EA authentication
+});
+
+// Validation schema for trade log import (multiple trades)
+const tradeLogImportSchema = Joi.object({
+  trades: Joi.array().items(
+    Joi.object({
+      mt5Ticket: Joi.string().required().min(1).max(50),
+      symbol: Joi.string().required().min(1).max(20),
+      direction: Joi.string().valid('BUY', 'SELL').required(),
+      volume: Joi.number().required().min(0.01).max(1000),
+      entryPrice: Joi.number().required().min(0.00001).max(1000000),
+      exitPrice: Joi.number().min(0.00001).max(1000000).optional(),
+      profit: Joi.number().required().min(-1000000).max(1000000),
+      commission: Joi.number().min(0).max(10000).default(0),
+      swap: Joi.number().min(-10000).max(10000).default(0),
+      openTime: Joi.date().required(),
+      closeTime: Joi.date().optional(),
+      accountBalance: Joi.number().required().min(0).max(100000000),
+      accountEquity: Joi.number().required().min(0).max(100000000),
+      accountMargin: Joi.number().min(0).max(100000000).optional()
+    })
+  ).min(1).max(1000) // Limit to 1000 trades per import
+    .messages({
+      'array.min': 'At least one trade is required',
+      'array.max': 'Too many trades in single import'
+    })
+});
+
 // Validation middleware
 export const validateRequest = (schema, property = 'body') => {
   return (req, res, next) => {
@@ -130,10 +232,16 @@ export const validateQuery = (schema) => {
   };
 };
 
+// Trade log validation middleware
+export const validateTradeLog = validateRequest(tradeLogSchema);
+export const validateTradeLogImport = validateRequest(tradeLogImportSchema);
+
 export {
   oauthCallbackSchema,
   tradePlanSchema,
   tradePlanUpdateSchema,
   emotionalStateUpdateSchema,
-  decisionUpdateSchema
+  decisionUpdateSchema,
+  tradeLogSchema,
+  tradeLogImportSchema
 };

@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import authRoutes from "./src/routes/auth.js";
 import tradePlanRoutes from "./src/routes/tradePlans.js";
 import configurationRoutes from "./src/routes/configurations.js";
+import tradeLogRoutes from "./src/routes/tradeLogs.js";
 
 // Load environment variables
 dotenv.config();
@@ -55,6 +56,7 @@ connectWithRetry();
 app.use('/auth', authRoutes);
 app.use('/api/trade-plans', tradePlanRoutes);
 app.use('/api/config', configurationRoutes);
+app.use('/api/trade-logs', tradeLogRoutes);
 
 // Basic route
 app.get("/", (req, res) => {

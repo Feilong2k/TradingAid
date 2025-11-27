@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-overlay" @click.self="closeModal">
+  <div class="modal-overlay">
     <div class="modal-container">
       <!-- Modal Header -->
       <div class="modal-header">
@@ -228,6 +228,8 @@ const loadTradePlanDetails = async () => {
     
     tradePlan.value = response.data;
     selectedStatus.value = tradePlan.value.status;
+    await nextTick();
+    scrollToBottom();
   } catch (error) {
     console.error('Error loading trade plan details:', error);
     if (error.response && error.response.status === 401) {
@@ -519,6 +521,7 @@ onMounted(() => {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   width: 90vw;
   max-width: 1200px;
+  height: 800px;
   max-height: 90vh;
   min-width: 800px;
   min-height: 600px;
@@ -709,6 +712,8 @@ onMounted(() => {
   overflow: hidden;
   padding: 0;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-content.loading {
@@ -728,8 +733,7 @@ onMounted(() => {
 .details-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  height: 100%;
-  max-height: calc(90vh - 80px);
+  flex: 1;
   min-height: 0;
 }
 
@@ -753,7 +757,7 @@ onMounted(() => {
 }
 
 .chat-messages {
-  flex: 1;
+  flex: 1 1 0; /* Ensure the scroll region gets space immediately */
   overflow-y: scroll;
   display: flex;
   flex-direction: column;

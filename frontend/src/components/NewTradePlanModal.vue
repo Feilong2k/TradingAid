@@ -126,6 +126,15 @@
                 </div>
                 <div class="message-content">
                   <div class="message-text">{{ message.content }}</div>
+                  <div v-if="message.retryable" class="retry-section">
+                    <button 
+                      class="retry-btn"
+                      @click="retryMessage(message)"
+                      :disabled="ariaTyping || isThinking"
+                    >
+                      🔄 Retry
+                    </button>
+                  </div>
                   <div class="message-time">{{ formatTime(message.timestamp) }}</div>
                 </div>
               </div>
@@ -449,7 +458,8 @@ const addSystemMessage = (content) => {
 };
 
 // Stream chat using SSE over fetch; server persists only on [DONE]
-const streamChat = async (messageText) => {
+const streamChat = async (messageText, retryCount = 0) => {
+  const maxRetries = 2;
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
   const url = `${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/chat/stream`;
   
@@ -471,10 +481,11 @@ const streamChat = async (messageText) => {
 
   // Abort + timeout for fail-safe
   const controller = new AbortController();
-  const timeoutMs = 10000;
+  const timeoutMs = 15000; // Increased timeout for better reliability
   const firstTokenTimer = setTimeout(() => {
     if (!firstTokenReceived) {
       controller.abort();
+      dlog('Stream timeout - no first token received');
     }
   }, timeoutMs);
 
@@ -495,13 +506,13 @@ const streamChat = async (messageText) => {
 
     if (!resp.ok || !resp.body) {
       clearTimeout(firstTokenTimer);
-      await fallbackBundledReply(messageText, assistantMessage);
-      return;
+      throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
     }
 
     const reader = resp.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
+    let fullText = '';
 
     while (true) {
       const { value, done } = await reader.read();
@@ -524,7 +535,8 @@ const streamChat = async (messageText) => {
           isThinking.value = false;
           ariaTyping.value = false;
 
-          if (assistantMessage.content.length < 80) {
+          // Ensure minimum content length for better UX
+          if (assistantMessage.content.length < 50) {
             assistantMessage.content += " Let's continue exploring this together. What else are you noticing?";
           }
           scrollToBottom();
@@ -541,6 +553,7 @@ const streamChat = async (messageText) => {
               isThinking.value = false;
               ariaTyping.value = true;
             }
+            fullText += delta;
             // Type token text character-by-character for smooth UX
             await typeCharacters(delta, assistantMessage);
           }
@@ -555,33 +568,45 @@ const streamChat = async (messageText) => {
     isThinking.value = false;
     ariaTyping.value = false;
     if (!firstTokenReceived) {
-      await fallbackBundledReply(messageText, assistantMessage);
+      throw new Error('Stream ended without receiving any tokens');
     }
   } catch (err) {
     clearTimeout(firstTokenTimer);
-    await fallbackBundledReply(messageText, assistantMessage);
+    isThinking.value = false;
+    ariaTyping.value = false;
+    
+    // Remove the assistant message since streaming failed
+    const messageIndex = conversation.value.findIndex(msg => msg.id === assistantMessageId);
+    if (messageIndex !== -1) {
+      conversation.value.splice(messageIndex, 1);
+    }
+    
+    // Handle retry logic
+    if (retryCount < maxRetries) {
+      const delay = Math.min(1000 * Math.pow(2, retryCount), 5000); // Exponential backoff
+      dlog(`Stream failed, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries + 1})`);
+      
+      addSystemMessage(`Connection issue detected, retrying... (${retryCount + 1}/${maxRetries + 1})`);
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return streamChat(messageText, retryCount + 1);
+    } else {
+      // All retries failed - show error with retry option
+      const errorMessageId = messageIdCounter++;
+      conversation.value.push({
+        id: errorMessageId,
+        role: 'system',
+        content: `❌ Response timed out after ${maxRetries + 1} attempts. The AI service may be experiencing high load.`,
+        timestamp: new Date(),
+        retryable: true,
+        originalMessage: messageText
+      });
+      scrollToBottom();
+      dlog('All stream retries failed:', err.message);
+    }
   }
 };
 
-const fallbackBundledReply = async (messageText, assistantMessage) => {
-  try {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
-    const resp = await axios.post(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/chat`, {
-      message: messageText,
-      emotionalState: emotionalState.value,
-      todayTrades: todayTrades.value
-    }, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
-    });
-    assistantMessage.content = resp.data.aiResponse || 'Thanks for sharing. Let’s continue exploring your emotional state.';
-  } catch {
-    assistantMessage.content = "I'm having trouble right now, but let's continue. How are you feeling at this moment?";
-  } finally {
-    isThinking.value = false;
-    ariaTyping.value = false;
-    scrollToBottom();
-  }
-};
 
 const submitEmotionalCheck = async () => {
   if (!emotionalState.value.state) {
@@ -632,6 +657,19 @@ const scrollToBottom = () => {
       chatMessages.value.scrollTop = chatMessages.value.scrollHeight;
     }
   });
+};
+
+const retryMessage = async (message) => {
+  if (ariaTyping.value || isThinking.value) return;
+  
+  // Remove the error message from conversation
+  const messageIndex = conversation.value.findIndex(msg => msg.id === message.id);
+  if (messageIndex !== -1) {
+    conversation.value.splice(messageIndex, 1);
+  }
+  
+  // Retry the original message
+  await streamChat(message.originalMessage);
 };
 
 const sendUserMessage = async () => {
@@ -1308,6 +1346,32 @@ const loadConfigurations = async () => {
 
 .message.user .message-time {
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* Retry button styles */
+.retry-section {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.retry-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.retry-btn:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.retry-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Typing animation */
