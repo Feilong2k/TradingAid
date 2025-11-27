@@ -1,3 +1,93 @@
+## Update - November 27, 2025 — Trade Logs page and "Journal History" rename
+
+Frontend
+- Added a new Trade Logs page:
+  - File: frontend/src/views/TradeLogs.vue
+  - Route: /logs (registered in frontend/src/main.js)
+  - Features:
+    - Filters: symbol, status (open/closed), date range (start/end), sort by (openTime/closeTime/profit/symbol), order (asc/desc)
+    - Pagination: page/limit with total count and pages from backend response
+    - Table columns: ticket, symbol, direction, volume, entry, exit, profit (colored), open/close timestamps, screenshot link
+    - Uses Authorization: Bearer token from localStorage
+    - API base URL uses VITE_API_BASE_URL with dev/prod fallback
+
+- Renamed "Trade History" to "Journal History" in UI:
+  - TradeHistory.vue:
+    - Header/nav label updated to "Journal History"
+    - Page title updated to "Journal History"
+    - Added quick link to "Trade Logs" in the header nav
+  - TradePlanning.vue:
+    - Nav labels updated to "Journal History" and added "Trade Logs"
+  - Home.vue:
+    - Quick nav button text changed to "Journal History" and added a button to "Trade Logs"
+
+- Router updates:
+  - Import TradeLogs view and register /logs route in frontend/src/main.js
+
+Backend (reference)
+- The Trade Logs page consumes GET /api/trade-logs with the following query parameters:
+  - page, limit, symbol, status, startDate, endDate, sortBy, sortOrder
+  - Requires Authorization: Bearer <token>
+  - Response shape expected:
+    { tradeLogs: TradeLog[], pagination: { page, limit, total, pages } }
+
+Usage
+- Navigate to /logs to view and filter imported or real-time MT5 trades
+- Continue to use Journal History (/history) for:
+  - CSV Import panel to upload historical MT5 data
+  - Viewing completed trade plans and launching plan details
+
+Notes
+- API base URL in views uses: import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? 'https://tradingaid.onrender.com' : 'http://localhost:3000')
+- Ensure you are authenticated; the pages include Authorization headers automatically via localStorage token.
+
+## Update - November 27, 2025 — MT5 Expert Advisor Integration & Trade Logs System
+
+### MT5 Integration Implementation
+
+**Backend Infrastructure:**
+- **TradeLog Data Model**: Created comprehensive trade log schema with MT5 trade data, account details, and screenshot storage
+- **Google Drive Integration**: Set up Google Drive API service for screenshot storage with folder ID: `1CH4mUh-gHZ_Waao6r6hz0trTMTBVp65Y`
+- **Trade Logs API**: Implemented complete REST API for trade data management with endpoints:
+  - `POST /api/trade-logs` - Receive trade data from MT5 EA
+  - `GET /api/trade-logs` - Fetch trade logs with filtering and pagination
+  - `GET /api/trade-logs/context` - Get today's/yesterday's trades for AI context
+  - `POST /api/trade-logs/import` - Import historical trade data
+  - `POST /api/trade-logs/:id/screenshot` - Upload screenshots for existing trades
+- **Validation Schemas**: Added comprehensive Joi validation for trade log data
+
+**MT5 Expert Advisor Development:**
+- **TradeAid_EA.mq5**: Complete MQL5 EA that monitors trade events and sends data to backend
+- **Historical_Export.mq5**: Script to export last 3 days of trade history for initial import
+- **Features**: Real-time trade monitoring, account details capture, screenshot capture, error handling with retries
+
+**Key Features:**
+- Automatic trade data capture on open/close events
+- Account balance and equity tracking
+- Screenshot capture and Google Drive storage
+- Performance analytics and streak tracking
+- Integration with existing AI emotional analysis
+
+### Files Created/Modified:
+
+**Backend:**
+- `backend/src/models/TradeLog.js` - Trade log data model with MT5 fields
+- `backend/src/services/googleDriveService.js` - Google Drive API integration
+- `backend/src/routes/tradeLogs.js` - Complete trade logs API routes
+- `backend/src/middleware/validation.js` - Added trade log validation schemas
+- `backend/server.js` - Registered trade logs routes
+
+**MT5 Scripts:**
+- `MT5_TradeAid_EA.mq5` - Main Expert Advisor for real-time data capture
+- `MT5_Historical_Export.mq5` - Historical data export script
+
+### Next Steps for MT5 Integration:
+1. **Setup Google Drive API**: Configure Google Cloud Console with Drive API access
+2. **Deploy Backend**: Update production backend with new trade logs endpoints
+3. **Install MT5 EA**: Load TradeAid_EA.mq5 in MT5 platform
+4. **Import Historical Data**: Run Historical_Export script and import via API
+5. **Test Integration**: Verify trade data flows from MT5 to backend
+
 ## Update - November 27, 2025 — Trade Plan Details Modal scroll fix, embedded chat, and auth redirects
 
 - Removed the Trade Setup section from TradePlanDetailsModal.vue (no longer needed in details view).
@@ -27,6 +117,11 @@ Files changed (key):
 Lessons learned:
 - For nested scroll regions inside flex/grid modals, always set min-height: 0 on intermediate containers to allow inner elements to scroll.
 - Mirror working patterns (from Emotional Check modal) for reliable streaming UX and scroll behavior.
+
+Follow-up refinements (same date):
+- Made modal-content a flex column container and details-layout flex: 1 to ensure immediate scrollbar rendering without user resize
+- Set chat-messages to flex: 1 1 0 to guarantee it receives space for scrolling
+- Disabled overlay click-to-close so the modal is only dismissible via the X button
 
 ## Hotfix - November 27, 2025 — Timeframe selection and route cleanup
 

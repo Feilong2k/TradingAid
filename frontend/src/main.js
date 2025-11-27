@@ -5,6 +5,7 @@ import App from "./App.vue";
 import Home from "./views/Home.vue";
 import TradePlanning from "./views/TradePlanning.vue";
 import TradeHistory from "./views/TradeHistory.vue";
+import TradeLogs from "./views/TradeLogs.vue";
 import AuthSuccess from "./views/AuthSuccess.vue";
 import AuthError from "./views/AuthError.vue";
 import Login from "./components/Login.vue";
@@ -24,6 +25,7 @@ const router = createRouter({
     { path: "/login", component: Login },
     { path: "/planning", component: TradePlanning, meta: { requiresAuth: true } },
     { path: "/history", component: TradeHistory, meta: { requiresAuth: true } },
+    { path: "/logs", component: TradeLogs, meta: { requiresAuth: true } },
     { path: "/auth-success", component: AuthSuccess },
     { path: "/auth-error", component: AuthError },
   ],

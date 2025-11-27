@@ -21,7 +21,11 @@
           </router-link>
           <router-link to="/history" class="nav-btn secondary">
             <span class="nav-icon">📈</span>
-            Trade History
+            Journal History
+          </router-link>
+          <router-link to="/logs" class="nav-btn secondary">
+            <span class="nav-icon">🧾</span>
+            Trade Logs
           </router-link>
         </div>
       </div>

@@ -6,7 +6,8 @@
         <h1 class="app-title">📈 Trading Aid</h1>
         <nav class="navigation">
           <router-link to="/planning" class="nav-link active">Trade Planning</router-link>
-          <router-link to="/history" class="nav-link">Trade History</router-link>
+          <router-link to="/history" class="nav-link">Journal History</router-link>
+          <router-link to="/logs" class="nav-link">Trade Logs</router-link>
         </nav>
         <div class="user-controls">
           <div class="user-info">

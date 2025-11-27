@@ -6,7 +6,8 @@
         <h1 class="app-title">📈 Trading Aid</h1>
         <nav class="navigation">
           <router-link to="/planning" class="nav-link">Trade Planning</router-link>
-          <router-link to="/history" class="nav-link active">Trade History</router-link>
+          <router-link to="/history" class="nav-link active">Journal History</router-link>
+          <router-link to="/logs" class="nav-link">Trade Logs</router-link>
         </nav>
         <div class="user-controls">
           <div class="user-info">
@@ -42,8 +43,33 @@
       <div class="container">
         <!-- Page Header -->
         <div class="page-header-section">
-          <h2 class="page-title">Trade History</h2>
+          <h2 class="page-title">Journal History</h2>
           <p class="page-subtitle">Review completed trades and learn from your performance</p>
+        </div>
+
+        <!-- CSV Import -->
+        <div class="section">
+          <div class="section-header">
+            <h3 class="section-title">Import MT5 CSV</h3>
+          </div>
+          <div class="import-panel">
+            <input type="file" accept=".csv" @change="onCsvFileChange" />
+            <div v-if="parsedRowsCount" class="info" style="margin-top: 0.5rem;">
+              Parsed {{ parsedRowsCount }} rows ready to upload
+            </div>
+            <div v-if="importErrors.length" class="error-list" style="color:#dc3545; margin-top:0.5rem;">
+              <div v-for="(err, idx) in importErrors" :key="idx" class="error-item">• {{ err }}</div>
+            </div>
+            <button class="action-btn small" :disabled="!parsedRowsCount || isImporting" @click="uploadTrades" style="margin-top: 0.75rem;">
+              {{ isImporting ? 'Importing...' : 'Upload to Trade Logs' }}
+            </button>
+            <div v-if="lastImportResult" class="info" style="margin-top: 0.5rem;">
+              Imported {{ lastImportResult.importedCount || 0 }} trades
+              <div v-if="lastImportResult.errors && lastImportResult.errors.length" class="error-list" style="color:#dc3545; margin-top:0.5rem;">
+                <div v-for="(e, i) in lastImportResult.errors" :key="'imp-'+i" class="error-item">• {{ e }}</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Trade History -->
@@ -97,6 +123,7 @@ import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth.js';
 import TradePlanDetailsModal from '../components/TradePlanDetailsModal.vue';
 import axios from 'axios';
+import Papa from 'papaparse';
 
 const authStore = useAuthStore();
 
@@ -106,10 +133,153 @@ const showDetailsModal = ref(false);
 const selectedPlanId = ref(null);
 const isLoading = ref(false);
 
+// CSV Import state
+const selectedFile = ref(null);
+const parsedTrades = ref([]);
+const parsedRowsCount = ref(0);
+const importErrors = ref([]);
+const isImporting = ref(false);
+const lastImportResult = ref(null);
+
+const onCsvFileChange = (e) => {
+  selectedFile.value = e.target.files?.[0] || null;
+  importErrors.value = [];
+  parsedTrades.value = [];
+  parsedRowsCount.value = 0;
+  if (selectedFile.value) {
+    parseCsvAndPrepare(selectedFile.value);
+  }
+};
+
+function parseCsvAndPrepare(file) {
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: (results) => {
+      try {
+        const rows = Array.isArray(results.data) ? results.data : [];
+        const trades = rows.map(normalizeRow).filter((r) => r !== null);
+        parsedTrades.value = trades;
+        parsedRowsCount.value = trades.length;
+      } catch (err) {
+        importErrors.value = [err?.message || 'Failed to parse CSV'];
+      }
+    },
+    error: (err) => {
+      importErrors.value = [err?.message || 'Failed to read CSV'];
+    }
+  });
+}
+
+function normalizeRow(row) {
+  const parseNum = (v) => {
+    if (v === undefined || v === null || v === '') return undefined;
+    const n = Number(String(v).replace(/,/g, '').trim());
+    return Number.isFinite(n) ? n : undefined;
+  };
+
+  const asString = (v) => (v === undefined || v === null ? '' : String(v));
+
+  const mt5Ticket = asString(row.mt5Ticket ?? row.ticket ?? row.Ticket).trim();
+  const symbol = asString(row.symbol ?? row.Symbol).trim();
+  const directionRaw = asString(row.direction ?? row.Direction).trim().toUpperCase();
+  const direction = directionRaw === 'SELL' ? 'SELL' : 'BUY';
+
+  const volume = parseNum(row.volume ?? row.Volume);
+  const entryPrice = parseNum(row.entryPrice ?? row.EntryPrice ?? row.price ?? row.Price);
+  const exitPrice = parseNum(row.exitPrice ?? row.ExitPrice);
+  const profit = parseNum(row.profit ?? row.Profit);
+  const commission = parseNum(row.commission ?? row.Commission) ?? 0;
+  const swap = parseNum(row.swap ?? row.Swap) ?? 0;
+
+  const openTimeStr = asString(row.openTime ?? row.OpenTime).trim();
+  const closeTimeStr = asString(row.closeTime ?? row.CloseTime).trim();
+  const openTime = parseMt5Date(openTimeStr);
+  const closeTime = closeTimeStr ? parseMt5Date(closeTimeStr) : null;
+
+  const accountBalance = parseNum(row.accountBalance ?? row.AccountBalance);
+  const accountEquity = parseNum(row.accountEquity ?? row.AccountEquity);
+  const accountMargin = parseNum(row.accountMargin ?? row.AccountMargin);
+
+  // Minimal required fields for backend validation
+  if (!mt5Ticket || !symbol || !volume || !entryPrice || profit === undefined || !openTime || accountBalance === undefined || accountEquity === undefined) {
+    return null;
+  }
+
+  return {
+    mt5Ticket,
+    symbol,
+    direction,
+    volume,
+    entryPrice,
+    exitPrice,
+    profit,
+    commission,
+    swap,
+    openTime,
+    closeTime,
+    accountBalance,
+    accountEquity,
+    accountMargin
+  };
+}
+
+function parseMt5Date(s) {
+  if (!s) return null;
+  // Expect "YYYY.MM.DD HH:MM:SS"
+  const m = s.match(/^(\d{4})\.(\d{2})\.(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+  if (m) {
+    const [, Y, M, D, h, min, sec] = m;
+    const d = new Date(Date.UTC(Number(Y), Number(M) - 1, Number(D), Number(h), Number(min), Number(sec)));
+    return d.toISOString();
+  }
+  const d2 = new Date(s);
+  if (isNaN(d2.getTime())) return null;
+  return d2.toISOString();
+}
+
+const uploadTrades = async () => {
+  importErrors.value = [];
+  lastImportResult.value = null;
+
+  if (parsedTrades.value.length === 0) {
+    importErrors.value = ['No valid rows parsed from CSV'];
+    return;
+  }
+
+  isImporting.value = true;
+  try {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? 'https://tradingaid.onrender.com' : 'http://localhost:3000');
+    const resp = await axios.post(
+      `${apiBaseUrl}/api/trade-logs/import`,
+      { trades: parsedTrades.value },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    lastImportResult.value = resp.data;
+    // Optionally refresh other views after import
+    // await loadCompletedTradePlans();
+  } catch (err) {
+    if (err?.response?.data?.details) {
+      importErrors.value = err.response.data.details;
+    } else if (err?.response?.data?.error) {
+      importErrors.value = [err.response.data.error];
+    } else {
+      importErrors.value = [err?.message || 'Import failed'];
+    }
+  } finally {
+    isImporting.value = false;
+  }
+};
+
 const loadCompletedTradePlans = async () => {
   isLoading.value = true;
   try {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? 'https://tradingaid.onrender.com' : 'http://localhost:3000');
     const response = await axios.get(`${apiBaseUrl}/api/trade-plans`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
     });
