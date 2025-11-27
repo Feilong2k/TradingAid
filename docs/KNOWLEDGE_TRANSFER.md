@@ -378,6 +378,13 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 - **Improved UX**: Better user experience when backend AI service is unavailable
 - **Files**: `frontend/src/components/NewTradePlanModal.vue` (sendUserMessage function)
 
+#### Backend AI Service Error Handling
+- **Graceful Fallback**: Backend chat endpoint now provides fallback response when AI service fails
+- **Nested Error Handling**: Added try-catch around aiService.analyzeChatMessage call
+- **Enhanced Logging**: Improved error logging with detailed context including message, stack trace, tradePlanId, and userId
+- **Prevent 500 Errors**: Backend no longer returns 500 errors for AI service failures, provides graceful response instead
+- **Files**: `backend/src/routes/tradePlans.js` (chat endpoint)
+
 ### Reliability & Fallback Improvements (November 26, 2025)
 
 #### Backend AI Fallback
