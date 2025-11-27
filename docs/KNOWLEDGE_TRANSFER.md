@@ -1,3 +1,33 @@
+## Update - November 27, 2025 — Trade Plan Details Modal scroll fix, embedded chat, and auth redirects
+
+- Removed the Trade Setup section from TradePlanDetailsModal.vue (no longer needed in details view).
+- Fixed scrollbars not appearing unless resizing by aligning layout with the working Emotional Check modal:
+  - Added min-height: 0 to flex/grid containers: .modal-content, .details-layout, .chat-column, .details-column
+  - Kept overflow-y: scroll on .chat-messages and .details-column to always show scrollbars when content overflows
+  - Root cause: flex/grid children without min-height: 0 cannot shrink, which prevents inner containers from scrolling
+- Added chat with Aria inside TradePlanDetailsModal (left column):
+  - Chat input at the bottom of the conversation, supports Enter to send
+  - Reuses SSE streaming endpoint POST /api/trade-plans/:id/chat/stream with Authorization header
+  - Typing/thinking indicators and auto-scroll to bottom during streaming (same pattern as NewTradePlanModal)
+- Status updates from the modal now PATCH the trade plan and update UI optimistically
+  - Backend: added PATCH /api/trade-plans/:id to update status
+- Authentication and routing improvements:
+  - Frontend router guard redirects unauthenticated users to /login when accessing /planning or /history
+  - Added explicit /login route (uses existing Login.vue)
+  - Details loader handles 401 by redirecting to /login
+- Asset management: relaxed admin requirement for adding assets
+  - Backend: POST /api/config/assets now requires authentication only (authenticateToken), not requireAdmin
+
+Files changed (key):
+- frontend/src/components/TradePlanDetailsModal.vue: removed Trade Setup block, added chat UI + SSE streaming, fixed scroll layout (min-height: 0, overflow), status dropdown behavior
+- frontend/src/main.js: added /login route, route guards redirect to /login; protected routes for planning/history
+- backend/src/routes/tradePlans.js: added PATCH /api/trade-plans/:id for status updates
+- backend/src/routes/configurations.js: asset add route now authenticateToken only
+
+Lessons learned:
+- For nested scroll regions inside flex/grid modals, always set min-height: 0 on intermediate containers to allow inner elements to scroll.
+- Mirror working patterns (from Emotional Check modal) for reliable streaming UX and scroll behavior.
+
 ## Hotfix - November 27, 2025 — Timeframe selection and route cleanup
 
 - Fixed a render-time error when selecting a timeframe caused by a missing helper function. Added getSelectedTimeframes() in NewTradePlanModal.vue to display the selected collection’s timeframes.

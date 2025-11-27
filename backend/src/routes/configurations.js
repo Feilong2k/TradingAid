@@ -54,8 +54,8 @@ router.get('/:type', async (req, res) => {
   }
 });
 
-// Add new asset to assets configuration (requires admin)
-router.post("/assets", authenticateToken, requireAdmin, async (req, res) => {
+// Add new asset to assets configuration (requires authentication)
+router.post("/assets", authenticateToken, async (req, res) => {
   try {
     const { asset } = req.body;
 

@@ -65,50 +65,28 @@
                 <p class="no-messages-subtitle">Start chatting with Aria to begin your emotional check</p>
               </div>
             </div>
+            <div class="chat-input-container">
+              <input 
+                v-model="userMessage" 
+                @keyup.enter="sendUserMessage"
+                placeholder="Type your message to Aria..."
+                class="chat-input"
+                :disabled="ariaTyping || isThinking"
+              />
+              <button 
+                @click="sendUserMessage" 
+                class="send-btn"
+                :disabled="!userMessage.trim() || ariaTyping || isThinking"
+              >
+                Send
+              </button>
+            </div>
           </div>
 
           <!-- Right Column: Trade Plan Details -->
           <div class="details-column">
             <h3 class="column-title">Trade Plan Information</h3>
             
-            <!-- Basic Trade Info -->
-            <div class="details-section">
-              <div class="section-header" @click="toggleSection('tradeSetup')">
-                <h4 class="section-title">Trade Setup</h4>
-                <span class="collapse-icon" :class="{ expanded: expandedSections.tradeSetup }">▼</span>
-              </div>
-              <div class="section-content" v-if="expandedSections.tradeSetup">
-                <div class="detail-grid">
-                  <div class="detail-item">
-                    <span class="detail-label">Asset:</span>
-                    <span class="detail-value">{{ tradePlan.asset || 'Not set' }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Direction:</span>
-                    <span 
-                      class="detail-value" 
-                      :class="{ long: tradePlan.direction === 'long', short: tradePlan.direction === 'short' }"
-                    >
-                      {{ tradePlan.direction || 'Not set' }}
-                    </span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Timeframe:</span>
-                    <span class="detail-value">{{ tradePlan.timeframe || 'Not set' }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Status:</span>
-                    <span class="detail-value status" :class="tradePlan.status">
-                      {{ formatStatus(tradePlan.status) }}
-                    </span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Created:</span>
-                    <span class="detail-value">{{ formatDateTime(tradePlan.createdAt) }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             <!-- Emotional State -->
             <div class="details-section" v-if="hasEmotionalStateData">
@@ -215,7 +193,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, nextTick, reactive } from 'vue';
 import axios from 'axios';
 
 const props = defineProps({
@@ -232,10 +210,13 @@ const isLoading = ref(true);
 const showDeleteConfirmation = ref(false);
 const selectedStatus = ref('');
 const expandedSections = ref({
-  tradeSetup: true,
   emotionalState: true,
   actions: true
 });
+const chatMessages = ref(null);
+const userMessage = ref('');
+const ariaTyping = ref(false);
+const isThinking = ref(false);
 
 const loadTradePlanDetails = async () => {
   isLoading.value = true;
@@ -246,8 +227,14 @@ const loadTradePlanDetails = async () => {
     });
     
     tradePlan.value = response.data;
+    selectedStatus.value = tradePlan.value.status;
   } catch (error) {
     console.error('Error loading trade plan details:', error);
+    if (error.response && error.response.status === 401) {
+      // Handle unauthorized - redirect to login
+      window.location.href = '/login';
+      return;
+    }
     alert('Failed to load trade plan details');
   } finally {
     isLoading.value = false;
@@ -376,6 +363,121 @@ const updateStatus = async () => {
     // Revert selected status to original value
     selectedStatus.value = tradePlan.value.status;
   }
+};
+
+/* Chat helpers */
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (chatMessages.value) {
+      chatMessages.value.scrollTop = chatMessages.value.scrollHeight;
+    }
+  });
+};
+
+const addUserMessage = (content) => {
+  if (!tradePlan.value) return;
+  tradePlan.value.conversation = tradePlan.value.conversation || [];
+  tradePlan.value.conversation.push({
+    role: 'user',
+    content,
+    timestamp: new Date()
+  });
+  scrollToBottom();
+};
+
+const streamChat = async (messageText) => {
+  if (!tradePlan.value) return;
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  const url = `${apiBaseUrl}/api/trade-plans/${props.tradePlanId}/chat/stream`;
+
+  const assistantMessage = reactive({
+    role: 'assistant',
+    content: '',
+    timestamp: new Date()
+  });
+  tradePlan.value.conversation.push(assistantMessage);
+  scrollToBottom();
+
+  isThinking.value = true;
+  ariaTyping.value = false;
+
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      },
+      body: JSON.stringify({ 
+        message: messageText,
+        emotionalState: tradePlan.value?.emotionalState || {},
+        todayTrades: []
+      })
+    });
+
+    if (!resp.ok || !resp.body) {
+      throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+    let firstTokenReceived = false;
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const frames = buffer.split('\n\n');
+      buffer = frames.pop() || '';
+
+      for (const frame of frames) {
+        const dataLine = frame.split('\n').find(l => l.startsWith('data:'));
+        if (!dataLine) continue;
+        const payload = dataLine.slice('data:'.length).trim();
+
+        if (payload === '[DONE]') {
+          isThinking.value = false;
+          ariaTyping.value = false;
+          scrollToBottom();
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(payload);
+          const delta = parsed?.delta ?? '';
+          if (delta) {
+            if (!firstTokenReceived) {
+              firstTokenReceived = true;
+              isThinking.value = false;
+              ariaTyping.value = true;
+            }
+            assistantMessage.content += delta;
+            await nextTick();
+            scrollToBottom();
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    isThinking.value = false;
+    ariaTyping.value = false;
+  } catch (err) {
+    isThinking.value = false;
+    ariaTyping.value = false;
+    console.error('Stream chat error:', err);
+  }
+};
+
+const sendUserMessage = async () => {
+  if (!userMessage.value.trim()) return;
+  const message = userMessage.value.trim();
+  userMessage.value = '';
+  addUserMessage(message);
+  await streamChat(message);
 };
 
 // Method to toggle section expansion
@@ -606,6 +708,7 @@ onMounted(() => {
   flex: 1;
   overflow: hidden;
   padding: 0;
+  min-height: 0;
 }
 
 .modal-content.loading {
@@ -627,6 +730,7 @@ onMounted(() => {
   grid-template-columns: 1fr 1fr;
   height: 100%;
   max-height: calc(90vh - 80px);
+  min-height: 0;
 }
 
 .column-title {
@@ -645,6 +749,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 .chat-messages {
@@ -737,6 +842,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-height: 0;
 }
 
 .details-section {
@@ -1104,6 +1210,34 @@ onMounted(() => {
 }
 
 /* Responsive Design */
+/* Chat input */
+.chat-input-container { 
+  padding: 1rem 0 0; 
+  border-top: 1px solid #e9ecef; 
+  display: flex; 
+  gap: 0.5rem; 
+}
+.chat-input { 
+  flex: 1; 
+  padding: 0.75rem; 
+  border: 2px solid #e9ecef; 
+  border-radius: 8px; 
+  font-size: 0.9rem; 
+}
+.send-btn { 
+  padding: 0.75rem 1.5rem; 
+  background: #667eea; 
+  color: white; 
+  border: none; 
+  border-radius: 8px; 
+  cursor: pointer; 
+  font-weight: 600; 
+}
+.send-btn:disabled { 
+  background: #6c757d; 
+  cursor: not-allowed; 
+}
+
 @media (max-width: 768px) {
   .modal-overlay {
     padding: 1rem;

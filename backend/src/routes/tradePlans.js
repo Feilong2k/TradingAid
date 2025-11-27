@@ -518,6 +518,28 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Update trade plan status
+router.patch('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    const tradePlan = await TradePlan.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
+      { status },
+      { new: true }
+    );
+    
+    if (!tradePlan) {
+      return res.status(404).json({ error: 'Trade plan not found' });
+    }
+    
+    res.json(tradePlan);
+  } catch (error) {
+    console.error('Error updating trade plan status:', error);
+    res.status(500).json({ error: 'Failed to update trade plan status' });
+  }
+});
+
 // Update decision
 router.patch('/:id/decision', authenticateToken, validateRequest(decisionUpdateSchema), async (req, res) => {
   try {
