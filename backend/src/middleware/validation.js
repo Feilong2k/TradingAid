@@ -15,7 +15,7 @@ const oauthCallbackSchema = Joi.object({
 // Validation schema for trade plan creation
 const tradePlanSchema = Joi.object({
   asset: Joi.string().required().min(1).max(50)
-    .pattern(/^[a-zA-Z0-9\-\/]+$/)
+    .pattern(/^[a-zA-Z0-9\-\/\s]+$/)
     .messages({
       'string.empty': 'Asset is required',
       'string.max': 'Asset name too long',
