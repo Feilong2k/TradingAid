@@ -1,3 +1,9 @@
+## Hotfix - November 27, 2025 — Timeframe selection and route cleanup
+
+- Fixed a render-time error when selecting a timeframe caused by a missing helper function. Added getSelectedTimeframes() in NewTradePlanModal.vue to display the selected collection’s timeframes.
+- Removed stale router-links to “/active” from Home.vue and TradePlanning.vue to prevent “[Vue Router warn]: No match found for location with path '/active'”.
+- No backend/API changes; behavior is unchanged beyond the fixes above.
+
 ## Update - November 27, 2025 — Emotional Check Chat Flow and Logging
 
 - Immediate system onboarding message (role: system) is shown as soon as the Emotional Check step opens. It is local-only, not persisted, and improves perceived responsiveness.

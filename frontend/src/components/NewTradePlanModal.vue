@@ -796,6 +796,14 @@ const formatTime = (date) => {
   return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
+// Helper: return a comma-separated list of timeframes for the selected collection label
+const getSelectedTimeframes = (selectedLabel) => {
+  const selectedCollection = timeframes.value.find(tf => tf.label === selectedLabel);
+  return selectedCollection && Array.isArray(selectedCollection.timeframes)
+    ? selectedCollection.timeframes.join(', ')
+    : '';
+};
+
 // Autocomplete methods
 const filterAssets = () => {
   if (!assetSearch.value) {

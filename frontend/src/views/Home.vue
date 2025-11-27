@@ -19,10 +19,6 @@
             <span class="nav-icon">📋</span>
             Trade Planning
           </router-link>
-          <router-link to="/active" class="nav-btn secondary">
-            <span class="nav-icon">📊</span>
-            Active Trades
-          </router-link>
           <router-link to="/history" class="nav-btn secondary">
             <span class="nav-icon">📈</span>
             Trade History
