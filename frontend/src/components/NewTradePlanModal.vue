@@ -431,10 +431,29 @@
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
       });
       
-      await addAriaMessage(response.data.aiResponse);
+      // Check if response is meaningful or just a generic fallback
+      const aiResponse = response.data.aiResponse;
+      if (aiResponse && !aiResponse.includes("Thank you for sharing your emotional state") && 
+          !aiResponse.includes("Let's explore this feeling together")) {
+        await addAriaMessage(aiResponse);
+      } else {
+        // Provide more specific, engaging response based on emotion type
+        const emotionType = currentEmotion.type;
+        if (emotionType === 'positive') {
+          await addAriaMessage(`It's great that you're feeling ${currentEmotion.label.toLowerCase()}! This is an ideal state for making trading decisions. Tell me more about what's contributing to this positive mindset - is it market conditions, recent successes, or something else?`);
+        } else {
+          await addAriaMessage(`I notice you're feeling ${currentEmotion.label.toLowerCase()}, and your body is showing signals of tension. This is important awareness. Can you tell me what specific thoughts or market situations are triggering these feelings right now?`);
+        }
+      }
     } catch (error) {
       console.error('Error submitting emotional check:', error);
-      await addAriaMessage("Thank you for sharing your emotional state. Let's explore this feeling together.");
+      // Provide more engaging fallback based on emotion type
+      const emotionType = currentEmotion.type;
+      if (emotionType === 'positive') {
+        await addAriaMessage(`Excellent! Being in a ${currentEmotion.label.toLowerCase()} state is perfect for trading. What specific factors are contributing to this positive mindset? Understanding this can help reinforce good trading habits.`);
+      } else {
+        await addAriaMessage(`I appreciate you sharing that you're feeling ${currentEmotion.label.toLowerCase()}. These emotional signals are valuable data points. What specific market conditions or thoughts are contributing to these feelings? Understanding the triggers can help us manage them effectively.`);
+      }
     }
   };
 
@@ -980,6 +999,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 0;
     height: 650px;
+    min-height: 0; /* Ensure container can shrink */
   }
 
   /* Left Column: Chat */
@@ -988,6 +1008,7 @@
     flex-direction: column;
     border-right: 1px solid #e9ecef;
     background: #f8f9fa;
+    min-height: 0; /* Ensure column can shrink */
   }
 
   .chat-header {
@@ -1027,6 +1048,7 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    min-height: 0; /* Ensure flex child can shrink */
   }
 
   .message {
