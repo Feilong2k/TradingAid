@@ -3,6 +3,11 @@ import TradePlan from '../models/TradePlan.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { aiService } from '../services/aiService.js';
 import { validateRequest, tradePlanSchema, tradePlanUpdateSchema, emotionalStateUpdateSchema, decisionUpdateSchema } from '../middleware/validation.js';
+import axios from 'axios';
+import { getSystemPrompt } from '../config/aiPersonality.js';
+
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1';
 
 const router = express.Router();
 
@@ -114,6 +119,148 @@ router.get('/today-trades', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching today\'s trades:', error);
     res.status(500).json({ error: 'Failed to fetch today\'s trades' });
+  }
+});
+
+// Stream chat with Aria (SSE) - persist only on [DONE]
+router.post('/:id/chat/stream', authenticateToken, async (req, res) => {
+  try {
+    const { message, emotionalState } = req.body;
+
+    const tradePlan = await TradePlan.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+
+    if (!tradePlan) {
+      return res.status(404).json({ error: 'Trade plan not found' });
+    }
+
+    // Prepare historical context (last 8 messages)
+    const history = (tradePlan.conversation || []).slice(-8).map(m => ({
+      role: m.role,
+      content: m.content
+    }));
+
+    const messages = [
+      { role: 'system', content: getSystemPrompt() },
+      ...history,
+      { role: 'user', content: message }
+    ];
+
+    // SSE headers
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+
+    if (!DEEPSEEK_API_KEY) {
+      // Fallback when no API key: send a short canned response, then DONE
+      const canned = "Let's focus on your emotional state. What's the strongest feeling you notice right now, and what simple step could help ease it?";
+      res.write(`data: ${JSON.stringify({ delta: canned })}\n\n`);
+      res.write(`data: [DONE]\n\n`);
+      // Do not persist without real streaming completion
+      return res.end();
+    }
+
+    const upstream = await axios.post(
+      `${DEEPSEEK_BASE_URL}/chat/completions`,
+      {
+        model: 'deepseek-reasoner',
+        messages,
+        stream: true
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        responseType: 'stream',
+        timeout: 0
+      }
+    );
+
+    let fullText = '';
+    let sawDone = false;
+
+    upstream.data.on('data', (chunk) => {
+      const lines = chunk.toString('utf8').split('\n').filter(Boolean);
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice('data:'.length).trim();
+        if (payload === '[DONE]') {
+          sawDone = true;
+          res.write(`data: [DONE]\n\n`);
+          // Persist both user and assistant messages only after DONE
+          (async () => {
+            try {
+              tradePlan.conversation = tradePlan.conversation || [];
+              tradePlan.conversation.push({
+                role: 'user',
+                content: message,
+                timestamp: new Date()
+              });
+              tradePlan.conversation.push({
+                role: 'assistant',
+                content: fullText,
+                timestamp: new Date()
+              });
+              await tradePlan.save();
+            } catch (e) {
+              console.error('Error saving streamed conversation:', e);
+            } finally {
+              if (!res.writableEnded) res.end();
+            }
+          })();
+          return;
+        }
+        try {
+          const json = JSON.parse(payload);
+          const delta = json?.choices?.[0]?.delta?.content ?? '';
+          if (delta) {
+            fullText += delta;
+            res.write(`data: ${JSON.stringify({ delta })}\n\n`);
+          }
+        } catch (e) {
+          // Ignore malformed lines / heartbeats
+        }
+      }
+    });
+
+    upstream.data.on('end', () => {
+      if (!sawDone) {
+        // Upstream ended without DONE; don't persist
+        if (!res.writableEnded) {
+          res.write(`data: ${JSON.stringify({ error: 'stream_ended' })}\n\n`);
+          res.write(`data: [DONE]\n\n`);
+          res.end();
+        }
+      }
+    });
+
+    upstream.data.on('error', (err) => {
+      console.error('DeepSeek stream error:', err?.message || err);
+      if (!res.writableEnded) {
+        res.write(`data: ${JSON.stringify({ error: 'stream_error' })}\n\n`);
+        res.write(`data: [DONE]\n\n`);
+        res.end();
+      }
+    });
+  } catch (error) {
+    console.error('Error in chat stream:', {
+      message: error.message,
+      stack: error.stack,
+      tradePlanId: req.params.id,
+      userId: req.user?._id
+    });
+    if (!res.headersSent) {
+      return res.status(500).json({ error: 'Failed to start chat stream' });
+    }
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify({ error: 'route_error' })}\n\n`);
+      res.write(`data: [DONE]\n\n`);
+      res.end();
+    }
   }
 });
 

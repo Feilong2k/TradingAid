@@ -485,152 +485,210 @@
     scrollToBottom();
   };
 
-  const addAriaMessage = async (content) => {
-    // Thinking phase: cycle through brief steps
-    isThinking.value = true;
-    let stepIndex = 0;
-    currentThinkingStep.value = thinkingSteps.value[stepIndex];
-    const stepTimer = setInterval(() => {
-      stepIndex = (stepIndex + 1) % thinkingSteps.value.length;
-      currentThinkingStep.value = thinkingSteps.value[stepIndex];
-    }, 900);
-
-    // Simulate initial thinking delay
-    await new Promise(resolve => setTimeout(resolve, 1200));
-
-    // End thinking, begin typing
-    clearInterval(stepTimer);
-    isThinking.value = false;
-    ariaTyping.value = true;
-
-    // Create message with empty content first
+  const addAriaMessage = (content) => {
+    // Immediately add assistant message without simulated typing
     const messageId = messageIdCounter++;
-    const newMessage = {
+    conversation.value.push({
       id: messageId,
+      role: 'assistant',
+      content,
+      timestamp: new Date()
+    });
+    isThinking.value = false;
+    ariaTyping.value = false;
+    scrollToBottom();
+  };
+  
+  // Stream chat using SSE over fetch; server persists only on [DONE]
+  const streamChat = async (messageText) => {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const url = `${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/chat/stream`;
+  
+    // Create an assistant placeholder message we will fill with streamed tokens
+    const assistantMessageId = messageIdCounter++;
+    const assistantMessage = {
+      id: assistantMessageId,
       role: 'assistant',
       content: '',
       timestamp: new Date()
     };
-    conversation.value.push(newMessage);
+    conversation.value.push(assistantMessage);
     scrollToBottom();
-
-    // Type out the content character by character for streaming effect
-    let currentIndex = 0;
-    while (currentIndex < content.length) {
-      newMessage.content += content.charAt(currentIndex);
-      currentIndex++;
-      scrollToBottom();
-
-      // Random typing speed for more natural feel (28-70ms per character)
-      const typingSpeed = 28 + Math.random() * 42;
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise(resolve => setTimeout(resolve, typingSpeed));
-    }
-
-    // Finished typing
+  
+    // Thinking indicator until first token arrives
+    isThinking.value = true;
     ariaTyping.value = false;
-    scrollToBottom();
+    let firstTokenReceived = false;
+  
+    // Abort + timeout for fail-safe
+    const controller = new AbortController();
+    const timeoutMs = 3500;
+    const firstTokenTimer = setTimeout(() => {
+      if (!firstTokenReceived) controller.abort();
+    }, timeoutMs);
+  
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({ message: messageText, emotionalState: emotionalState.value }),
+        signal: controller.signal
+      });
+  
+      // If server fell back to non-stream JSON (e.g., error), get bundled reply
+      if (!resp.ok || !resp.body) {
+        clearTimeout(firstTokenTimer);
+        await fallbackBundledReply(messageText, assistantMessage);
+        return;
+      }
+  
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+  
+      // Begin reading stream
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+  
+        buffer += decoder.decode(value, { stream: true });
+  
+        // Parse SSE frames separated by blank line
+        const frames = buffer.split('\n\n');
+        buffer = frames.pop() || '';
+  
+        for (const frame of frames) {
+          const dataLine = frame.split('\n').find(l => l.startsWith('data:'));
+          if (!dataLine) continue;
+          const payload = dataLine.slice('data:'.length).trim();
+  
+          if (payload === '[DONE]') {
+            // Finish successfully
+            clearTimeout(firstTokenTimer);
+            isThinking.value = false;
+            ariaTyping.value = false;
+            scrollToBottom();
+            return;
+          }
+  
+          try {
+            const parsed = JSON.parse(payload);
+            const delta = parsed?.delta ?? '';
+            if (delta) {
+              // First token -> switch from thinking to typing
+              if (!firstTokenReceived) {
+                firstTokenReceived = true;
+                clearTimeout(firstTokenTimer);
+                isThinking.value = false;
+                ariaTyping.value = true;
+              }
+              assistantMessage.content += delta;
+              scrollToBottom();
+            }
+          } catch {
+            // Ignore keepalives or malformed chunks
+          }
+        }
+      }
+  
+      // If stream ended without [DONE], treat as failure and fallback
+      if (!firstTokenReceived) {
+        clearTimeout(firstTokenTimer);
+        await fallbackBundledReply(messageText, assistantMessage);
+      } else {
+        // Ended but no explicit DONE; just finalize UI
+        clearTimeout(firstTokenTimer);
+        isThinking.value = false;
+        ariaTyping.value = false;
+      }
+    } catch (err) {
+      // Abort (timeout) or network error -> fallback to bundled reply
+      clearTimeout(firstTokenTimer);
+      await fallbackBundledReply(messageText, assistantMessage);
+    }
   };
-
-  const sendUserMessage = async () => {
-    if (!userMessage.value.trim() || ariaTyping.value) return;
-    
-    const message = userMessage.value.trim();
-    userMessage.value = '';
-    addUserMessage(message);
-    
+  
+  const fallbackBundledReply = async (messageText, assistantMessage) => {
     try {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
-      const response = await axios.post(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/chat`, {
-        message: message,
+      const resp = await axios.post(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/chat`, {
+        message: messageText,
         emotionalState: emotionalState.value
       }, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
       });
-      
-      await addAriaMessage(response.data.aiResponse);
+      assistantMessage.content = resp.data.aiResponse || 'Thanks for sharing. Let’s continue exploring your emotional state.';
     } catch (error) {
-      console.error('Error sending message:', {
-        status: error?.response?.status,
-        data: error?.response?.data,
-        message: error?.message,
-        url: error?.config?.url,
-        tradePlanId: currentTradePlanId.value
-      });
-      
-      // More helpful fallback responses based on the context
-      if (conversation.value.length === 0) {
-        await addAriaMessage("Let's start with a quick emotional check-in. How are you feeling right now? Take a moment to notice any physical sensations or emotions that come up.");
-      } else {
-        await addAriaMessage("Thanks for sharing. Let's continue exploring your emotional state. What else are you noticing about how you're feeling right now?");
-      }
+      console.error('Fallback bundled reply failed:', error);
+      assistantMessage.content = "I'm having trouble right now, but let's continue. How are you feeling at this moment?";
+    } finally {
+      isThinking.value = false;
+      ariaTyping.value = false;
+      scrollToBottom();
     }
+  };
+
+  const sendUserMessage = async () => {
+    if (!userMessage.value.trim() || ariaTyping.value || isThinking.value) return;
+  
+    const message = userMessage.value.trim();
+    userMessage.value = '';
+    addUserMessage(message);
+  
+    // Prefer true streaming; fallback handled inside streamChat
+    await streamChat(message);
   };
 
   const proceedToEmotionalCheck = async () => {
     try {
       isLoading.value = true;
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
-      
+  
       // Create trade plan (normalize timeframe collection to a valid backend enum)
       let timeframeNormalized = tradeSetup.value.timeframe;
       const selectedCollection = timeframes.value.find(tf => tf.label === tradeSetup.value.timeframe);
-      
-      console.log('Selected timeframe collection:', selectedCollection);
-      console.log('Original timeframe:', tradeSetup.value.timeframe);
-      
+  
       if (selectedCollection && Array.isArray(selectedCollection.timeframes) && selectedCollection.timeframes.length > 0) {
-        // Take the first timeframe from the selected collection, e.g., 'H1' or 'M15'
         const token = selectedCollection.timeframes[0];
-        console.log('First timeframe token:', token);
-        
         const match = token.match(/^([MH])(\d+)$/i);
         if (match) {
           const unit = match[1].toUpperCase() === 'M' ? 'm' : 'h';
           timeframeNormalized = `${match[2]}${unit}`; // e.g., '15m' or '1h'
-          console.log('Normalized timeframe:', timeframeNormalized);
         } else {
-          // If the token is already in the correct format, use it directly
           timeframeNormalized = token.toLowerCase();
-          console.log('Using timeframe directly:', timeframeNormalized);
         }
       } else if (/^[MH]\d+$/i.test(timeframeNormalized)) {
-        // If somehow the v-model captured a single token like 'M15' or 'H1', normalize it
         const match = timeframeNormalized.match(/^([MH])(\d+)$/i);
         if (match) {
           const unit = match[1].toUpperCase() === 'M' ? 'm' : 'h';
           timeframeNormalized = `${match[2]}${unit}`;
         }
       }
-      
-      console.log('Final timeframe to send:', timeframeNormalized);
-      
+  
       const payload = {
         asset: tradeSetup.value.asset,
         direction: tradeSetup.value.direction,
         timeframe: timeframeNormalized
       };
-      
-      console.log('Sending payload:', payload);
-      
+  
       const response = await axios.post(`${apiBaseUrl}/api/trade-plans`, payload, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
       });
-      
-      console.log('Trade plan created successfully:', response.data);
+  
       currentTradePlanId.value = response.data._id;
-      
+  
       // Switch to emotional check immediately
       currentStep.value = 2;
-      
+  
       // Get today's trades for AI analysis
       const todayTradesResponse = await axios.get(`${apiBaseUrl}/api/trade-plans/today-trades`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
       });
-      
-      console.log('Today trades response:', todayTradesResponse.data);
-      
-      // Get initial AI message in background
+  
+      // Get initial AI message in background (bundled, not streamed)
       setTimeout(async () => {
         try {
           const aiResponse = await axios.post(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/analyze-emotions`, {
@@ -639,14 +697,14 @@
           }, {
             headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
           });
-          
-          await addAriaMessage(aiResponse.data.aiAnalysis);
+  
+          addAriaMessage(aiResponse.data.aiAnalysis);
         } catch (error) {
           console.error('Error getting AI analysis:', error);
-          await addAriaMessage("Welcome! Let's start with an emotional check-in. How are you feeling right now?");
+          addAriaMessage("Welcome! Let's start with an emotional check-in. How are you feeling right now?");
         }
       }, 100);
-      
+  
     } catch (error) {
       console.error('Error proceeding to emotional check:', {
         status: error?.response?.status,
@@ -655,8 +713,7 @@
         url: error?.config?.url,
         payload: error?.config?.data
       });
-      
-      // More specific error message based on the error type
+  
       if (error?.response?.status === 400) {
         alert('Invalid trade plan data. Please check your inputs and try again.');
       } else if (error?.response?.status === 404) {

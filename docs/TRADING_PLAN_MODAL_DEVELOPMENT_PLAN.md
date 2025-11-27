@@ -599,6 +599,22 @@ This development plan ensures that the existing AI personality is fully leverage
 
 ## Update - November 27, 2025
 
+#### True Streaming (SSE) implemented
+- Backend
+  - Added POST `/api/trade-plans/:id/chat/stream` using Server-Sent Events (SSE) to proxy DeepSeek with `stream: true`
+  - Streams tokens to the client as SSE frames: `data: {"delta":"..."}` and terminates with `data: [DONE]`
+  - Persists conversation to MongoDB only when `[DONE]` is seen (saves user message and the full assistant message together). If the stream ends without `[DONE]` or errors, no DB write occurs
+  - Response is not compressed; route supports long‑lived connections
+- Frontend
+  - Removed simulated character-by-character typing
+  - Implemented fetch streaming consumer that parses SSE frames and updates the assistant message incrementally
+  - Fail-safe fallback:
+    - If first token does not arrive within a small timeout (e.g., 3.5s) or the stream aborts/errors, the UI falls back to bundled reply via POST `/api/trade-plans/:id/chat`
+    - UI finalizes the assistant message cleanly for both streaming and fallback paths
+- Result
+  - Real-time streaming UX with robust fallback to bundled replies when streaming is unavailable
+  - Data integrity: messages are saved only on successful stream completion (`[DONE]`)
+
 ### Implemented
 - Chat UX
   - Streaming-style replies (frontend simulation): Assistant messages type out character-by-character for a ChatGPT-like experience

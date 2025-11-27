@@ -570,4 +570,24 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 3. Trade plan details polish
    - Keep the Emotional State card at parity with modal data entry and ensure new fields (if any) remain in sync.
 
+## True Streaming Upgrade (November 27, 2025 - SSE)
+
+- Backend
+  - Added POST /api/trade-plans/:id/chat/stream using Server-Sent Events (SSE) to proxy DeepSeek stream (stream: true)
+  - Streams tokens to the client as JSON frames: data: {"delta": "..."} and terminates with data: [DONE]
+  - Persists conversation to MongoDB only when [DONE] is received (saves user message and full assistant message together)
+  - Robust error handling: if the upstream stream ends without [DONE] or errors, no DB write occurs and an error frame is sent to client
+  - No compression on this response path (Express doesn’t use compression here); long-lived responses are supported
+
+- Frontend
+  - Removed simulated character-by-character typing
+  - Chat now uses fetch streaming to read SSE frames and update the assistant message incrementally
+  - Fail-safe:
+    - If first token isn’t received within a short timeout or the stream errors, it aborts and falls back to POST /api/trade-plans/:id/chat (bundled reply)
+    - UI finalizes the assistant message cleanly in both stream and fallback modes
+
+- Result
+  - Real-time token streaming UX with graceful fallback to bundled replies when streaming is unavailable
+  - Data integrity: messages are saved to MongoDB only on successful stream completion ([DONE])
+
 *This document was generated based on comprehensive code review and security improvements implemented on November 26, 2025.*
