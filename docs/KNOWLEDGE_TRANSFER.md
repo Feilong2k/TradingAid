@@ -338,6 +338,38 @@ VITE_API_BASE_URL=https://tradingaid.onrender.com
 - **Better Balance**: Chat and emotion selection columns now each take 50% of modal width
 - **Files**: `frontend/src/components/NewTradePlanModal.vue` (CSS grid-template-columns)
 
+### Modal Closing & Body Signals Fixes (November 26, 2025)
+
+#### Modal Closing Functionality
+- **Fixed Close Button**: Resolved issue where X buttons weren't closing the modal
+- **Emotional Check Header**: Added X button to emotional check step header for consistent UX
+- **Close Logic**: Updated `closeModal` function to properly emit close event
+- **Overlay Click Removal**: Removed overlay click-to-close functionality - modal now only closes via X buttons for consistent UX
+- **Files**: `frontend/src/components/NewTradePlanModal.vue`
+
+#### Body Signals Integration
+- **Complete Data Submission**: Emotional check now sends both emotion selection and body signals with intensity
+- **Message Enhancement**: Submit emotional check includes formatted body signal details in chat message
+- **Data Filtering**: Only sends body signals that have been filled (non-empty signal values)
+- **Intensity Display**: Body signals now include intensity values (1-10 scale) in the chat message
+- **Files**: `frontend/src/components/NewTradePlanModal.vue`
+
+### Chat Experience & AI Response Improvements (November 26, 2025)
+
+#### Chat Scrolling Fix
+- **Flex Container Issues**: Fixed chat container scrolling by adding `min-height: 0` to flex containers
+- **CSS Hierarchy**: Applied `min-height: 0` to `.emotional-check-container`, `.chat-column`, and `.chat-messages`
+- **Proper Scrolling**: Ensured chat messages container scrolls properly when conversation gets long
+- **Files**: `frontend/src/components/NewTradePlanModal.vue`
+
+#### AI Response Quality Enhancement
+- **Generic Response Detection**: Frontend now detects and replaces generic AI responses like "Thank you for sharing your emotional state"
+- **Emotion-Specific Responses**: Provides engaging, emotion-specific responses based on positive/negative emotional states
+- **Positive Emotions**: Encourages sharing positive mindset factors and reinforces good trading habits
+- **Negative Emotions**: Acknowledges tension and explores specific triggers for better emotional management
+- **Encourages Engagement**: All responses prompt user to share more details about their emotional state
+- **Files**: `frontend/src/components/NewTradePlanModal.vue` (submitEmotionalCheck function)
+
 ### Reliability & Fallback Improvements (November 26, 2025)
 
 #### Backend AI Fallback
