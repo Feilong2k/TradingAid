@@ -134,6 +134,166 @@
             </div>
 
 
+            <!-- Technical Analysis -->
+            <div class="details-section" v-if="hasAnalysisEntries">
+              <div class="section-header" @click="toggleSection('technicalAnalysis')">
+                <h4 class="section-title">Technical Analysis</h4>
+                <span class="collapse-icon" :class="{ expanded: expandedSections.technicalAnalysis }">▼</span>
+              </div>
+              <div class="section-content" v-if="expandedSections.technicalAnalysis">
+                <div class="technical-analysis">
+                  <!-- HTF Analysis -->
+                  <div class="timeframe-section" v-if="htfAnalysis.length > 0">
+                    <h5 class="timeframe-title">Higher Timeframe (HTF)</h5>
+                    <div v-for="(entry, index) in htfAnalysis" :key="entry._id" class="analysis-entry">
+                      <div class="analysis-header">
+                        <span class="analysis-date">{{ formatDateTime(entry.createdAt) }}</span>
+                        <span class="analysis-direction" :class="getDirectionalBias(entry)">{{ getDirectionalBias(entry) }}</span>
+                      </div>
+                      <div class="technical-elements">
+                        <div class="element-grid">
+                          <div v-for="element in technicalElements" :key="element.key" class="element-item">
+                            <span class="element-label">{{ element.label }}:</span>
+                            <span class="element-value">{{ getElementValue(entry, element.key) }}</span>
+                            <span class="element-grade" :class="getGradeClass(getElementGrade(entry, element.key))">
+                              {{ getElementGrade(entry, element.key) }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="total-grade">
+                        <span class="grade-label">Total Grade:</span>
+                        <span class="grade-value" :class="getGradeClass(calculateTotalGrade(entry))">
+                          {{ calculateTotalGrade(entry) }}
+                        </span>
+                      </div>
+                      <div class="aria-assessment" v-if="entry.technicalAssessment?.text">
+                        <h6 class="assessment-title">Aria's Assessment</h6>
+                        <p class="assessment-text">{{ entry.technicalAssessment.text }}</p>
+                      </div>
+                      <div class="analysis-notes" v-if="entry.notes">
+                        <h6 class="notes-title">Notes</h6>
+                        <p class="notes-text">{{ entry.notes }}</p>
+                      </div>
+                      <div class="screenshots" v-if="entry.screenshots && entry.screenshots.length > 0">
+                        <h6 class="screenshots-title">Screenshots</h6>
+                        <div class="screenshot-gallery">
+                          <div v-for="screenshot in entry.screenshots" :key="screenshot._id" class="screenshot-item">
+                            <img :src="screenshot.url" :alt="screenshot.filename" class="screenshot-thumbnail" />
+                            <div class="screenshot-info">
+                              <span class="screenshot-filename">{{ screenshot.filename }}</span>
+                              <span class="screenshot-note" v-if="screenshot.note">{{ screenshot.note }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- MTF Analysis -->
+                  <div class="timeframe-section" v-if="mtfAnalysis.length > 0">
+                    <h5 class="timeframe-title">Medium Timeframe (MTF)</h5>
+                    <div v-for="(entry, index) in mtfAnalysis" :key="entry._id" class="analysis-entry">
+                      <div class="analysis-header">
+                        <span class="analysis-date">{{ formatDateTime(entry.createdAt) }}</span>
+                        <span class="analysis-direction" :class="getDirectionalBias(entry)">{{ getDirectionalBias(entry) }}</span>
+                      </div>
+                      <div class="technical-elements">
+                        <div class="element-grid">
+                          <div v-for="element in technicalElements" :key="element.key" class="element-item">
+                            <span class="element-label">{{ element.label }}:</span>
+                            <span class="element-value">{{ getElementValue(entry, element.key) }}</span>
+                            <span class="element-grade" :class="getGradeClass(getElementGrade(entry, element.key))">
+                              {{ getElementGrade(entry, element.key) }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="total-grade">
+                        <span class="grade-label">Total Grade:</span>
+                        <span class="grade-value" :class="getGradeClass(calculateTotalGrade(entry))">
+                          {{ calculateTotalGrade(entry) }}
+                        </span>
+                      </div>
+                      <div class="aria-assessment" v-if="entry.technicalAssessment?.text">
+                        <h6 class="assessment-title">Aria's Assessment</h6>
+                        <p class="assessment-text">{{ entry.technicalAssessment.text }}</p>
+                      </div>
+                      <div class="analysis-notes" v-if="entry.notes">
+                        <h6 class="notes-title">Notes</h6>
+                        <p class="notes-text">{{ entry.notes }}</p>
+                      </div>
+                      <div class="screenshots" v-if="entry.screenshots && entry.screenshots.length > 0">
+                        <h6 class="screenshots-title">Screenshots</h6>
+                        <div class="screenshot-gallery">
+                          <div v-for="screenshot in entry.screenshots" :key="screenshot._id" class="screenshot-item">
+                            <img :src="screenshot.url" :alt="screenshot.filename" class="screenshot-thumbnail" />
+                            <div class="screenshot-info">
+                              <span class="screenshot-filename">{{ screenshot.filename }}</span>
+                              <span class="screenshot-note" v-if="screenshot.note">{{ screenshot.note }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- LTF Analysis -->
+                  <div class="timeframe-section" v-if="ltfAnalysis.length > 0">
+                    <h5 class="timeframe-title">Lower Timeframe (LTF)</h5>
+                    <div v-for="(entry, index) in ltfAnalysis" :key="entry._id" class="analysis-entry">
+                      <div class="analysis-header">
+                        <span class="analysis-date">{{ formatDateTime(entry.createdAt) }}</span>
+                        <span class="analysis-direction" :class="getDirectionalBias(entry)">{{ getDirectionalBias(entry) }}</span>
+                      </div>
+                      <div class="technical-elements">
+                        <div class="element-grid">
+                          <div v-for="element in technicalElements" :key="element.key" class="element-item">
+                            <span class="element-label">{{ element.label }}:</span>
+                            <span class="element-value">{{ getElementValue(entry, element.key) }}</span>
+                            <span class="element-grade" :class="getGradeClass(getElementGrade(entry, element.key))">
+                              {{ getElementGrade(entry, element.key) }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="total-grade">
+                        <span class="grade-label">Total Grade:</span>
+                        <span class="grade-value" :class="getGradeClass(calculateTotalGrade(entry))">
+                          {{ calculateTotalGrade(entry) }}
+                        </span>
+                      </div>
+                      <div class="aria-assessment" v-if="entry.technicalAssessment?.text">
+                        <h6 class="assessment-title">Aria's Assessment</h6>
+                        <p class="assessment-text">{{ entry.technicalAssessment.text }}</p>
+                      </div>
+                      <div class="analysis-notes" v-if="entry.notes">
+                        <h6 class="notes-title">Notes</h6>
+                        <p class="notes-text">{{ entry.notes }}</p>
+                      </div>
+                      <div class="screenshots" v-if="entry.screenshots && entry.screenshots.length > 0">
+                        <h6 class="screenshots-title">Screenshots</h6>
+                        <div class="screenshot-gallery">
+                          <div v-for="screenshot in entry.screenshots" :key="screenshot._id" class="screenshot-item">
+                            <img :src="screenshot.url" :alt="screenshot.filename" class="screenshot-thumbnail" />
+                            <div class="screenshot-info">
+                              <span class="screenshot-filename">{{ screenshot.filename }}</span>
+                              <span class="screenshot-note" v-if="screenshot.note">{{ screenshot.note }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-if="!hasAnalysisEntries" class="no-analysis-data">
+                    <p class="no-data-text">No technical analysis data available yet</p>
+                    <p class="no-data-subtitle">Complete technical analysis to see your data here</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Actions -->
             <div class="details-section">
               <div class="section-header" @click="toggleSection('actions')">
@@ -211,8 +371,20 @@ const showDeleteConfirmation = ref(false);
 const selectedStatus = ref('');
 const expandedSections = ref({
   emotionalState: true,
+  technicalAnalysis: true,
   actions: true
 });
+
+// Technical analysis data
+const technicalElements = ref([
+  { key: 'trend', label: 'Trend' },
+  { key: 'choch', label: 'CHoCH' },
+  { key: 'divergence', label: 'Divergence' },
+  { key: 'stochastics', label: 'Stochastics' },
+  { key: 'timeCriteria', label: 'Time Criteria' },
+  { key: 'atrAnalysis', label: 'ATR Analysis' },
+  { key: 'movingAverages', label: 'Moving Averages' }
+]);
 const chatMessages = ref(null);
 const userMessage = ref('');
 const ariaTyping = ref(false);
@@ -248,7 +420,10 @@ const closeModal = () => {
 };
 
 const continuePlan = () => {
-  emit('plan-continued', tradePlan.value);
+  emit('plan-continued', {
+    tradePlan: tradePlan.value,
+    analysisType: 'HTF'
+  });
   closeModal();
 };
 
@@ -486,6 +661,126 @@ const sendUserMessage = async () => {
 const toggleSection = (section) => {
   expandedSections.value[section] = !expandedSections.value[section];
 };
+
+// Technical Analysis Helper Methods
+const getElementValue = (entry, elementKey) => {
+  const value = entry[elementKey];
+  if (!value) return 'Not set';
+  
+  // Format the value for display
+  const formattedValue = value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  return formattedValue;
+};
+
+const getElementGrade = (entry, elementKey) => {
+  const value = entry[elementKey];
+  if (!value) return 0;
+  
+  // Grade mapping based on the 7-element grading system
+  const gradeMap = {
+    // Trend grades
+    'up_trending_above_ma': 2,
+    'up_consolidation': 1,
+    'down_trending_below_ma': -2,
+    'down_consolidation': -1,
+    'unclear': 0,
+    
+    // CHoCH grades
+    'no_change': 0,
+    'up_trend_broken': -1,
+    'down_trend_broken': 1,
+    'up_confirmed_not_verified': 2,
+    'down_confirmed_not_verified': -2,
+    'up_verified_not_confirmed': 2,
+    'down_verified_not_confirmed': -2,
+    'up_confirmed_verified': 3,
+    'down_confirmed_verified': -3,
+    
+    // Divergence grades
+    'none': 0,
+    'five_waves_up_divergence': -2,
+    'five_waves_down_divergence': 2,
+    'three_waves_up_divergence': -1,
+    'three_waves_down_divergence': 1,
+    
+    // Stochastics grades
+    'oversold': 1,
+    'overbought': -1,
+    'moving_up': 1,
+    'moving_down': -1,
+    'directionless': 0,
+    'divergence_overbought': -1,
+    'divergence_oversold': 1,
+    
+    // Time Criteria grades
+    'uptrend_consolidation_met': 1,
+    'downtrend_consolidation_met': -1,
+    'uptrend_time_not_over': 1,
+    'downtrend_time_not_over': -1,
+    'consolidation_not_met': 0,
+    'trend_time_over': 0,
+    'not_valid': 0,
+    
+    // ATR Analysis grades
+    'up_candle_high': 2,
+    'down_candle_high': -2,
+    'up_candle_medium': 1,
+    'down_candle_medium': -1,
+    'low': 0,
+    
+    // Moving Averages grades
+    'crossing_up': 2,
+    'fanning_up': 1,
+    'crossing_down': -2,
+    'fanning_down': -1,
+    'unclear': 0
+  };
+  
+  return gradeMap[value] || 0;
+};
+
+const calculateTotalGrade = (entry) => {
+  let total = 0;
+  technicalElements.value.forEach(element => {
+    total += getElementGrade(entry, element.key);
+  });
+  return total;
+};
+
+const getDirectionalBias = (entry) => {
+  const totalGrade = calculateTotalGrade(entry);
+  if (totalGrade > 5) return 'long';
+  if (totalGrade < -5) return 'short';
+  return 'unclear';
+};
+
+const getGradeClass = (grade) => {
+  if (grade > 0) return 'positive';
+  if (grade < 0) return 'negative';
+  return 'neutral';
+};
+
+// Computed properties for technical analysis
+const hasAnalysisEntries = computed(() => {
+  return tradePlan.value && 
+         tradePlan.value.analysisEntries && 
+         tradePlan.value.analysisEntries.length > 0;
+});
+
+const htfAnalysis = computed(() => {
+  if (!tradePlan.value || !tradePlan.value.analysisEntries) return [];
+  return tradePlan.value.analysisEntries.filter(entry => entry.timeframe === 'HTF');
+});
+
+const mtfAnalysis = computed(() => {
+  if (!tradePlan.value || !tradePlan.value.analysisEntries) return [];
+  return tradePlan.value.analysisEntries.filter(entry => entry.timeframe === 'MTF');
+});
+
+const ltfAnalysis = computed(() => {
+  if (!tradePlan.value || !tradePlan.value.analysisEntries) return [];
+  return tradePlan.value.analysisEntries.filter(entry => entry.timeframe === 'LTF');
+});
 
 // Watch for tradePlan changes to update selectedStatus
 import { watch } from 'vue';
@@ -1051,6 +1346,254 @@ onMounted(() => {
   background: white;
   border-radius: 8px;
   border: 1px solid #e9ecef;
+}
+
+/* Technical Analysis Styles */
+.technical-analysis {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.timeframe-section {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  padding: 1rem;
+}
+
+.timeframe-title {
+  color: #2c3e50;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #667eea;
+}
+
+.analysis-entry {
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.analysis-entry:last-child {
+  margin-bottom: 0;
+}
+
+.analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.analysis-date {
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+.analysis-direction {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.analysis-direction.long {
+  background: #d4edda;
+  color: #155724;
+}
+
+.analysis-direction.short {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.analysis-direction.unclear {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+.technical-elements {
+  margin-bottom: 1rem;
+}
+
+.element-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+}
+
+.element-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.element-label {
+  color: #6c757d;
+  font-weight: 500;
+  font-size: 0.8rem;
+}
+
+.element-value {
+  color: #2c3e50;
+  font-weight: 500;
+  font-size: 0.8rem;
+  flex: 1;
+  text-align: center;
+}
+
+.element-grade {
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.element-grade.positive {
+  background: #d4edda;
+  color: #155724;
+}
+
+.element-grade.negative {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.element-grade.neutral {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+.total-grade {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 1rem;
+}
+
+.grade-label {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.grade-value {
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}
+
+.grade-value.positive {
+  background: #d4edda;
+  color: #155724;
+}
+
+.grade-value.negative {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.grade-value.neutral {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+.aria-assessment,
+.analysis-notes,
+.screenshots {
+  margin-bottom: 1rem;
+}
+
+.assessment-title,
+.notes-title,
+.screenshots-title {
+  color: #495057;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+}
+
+.assessment-text,
+.notes-text {
+  color: #2c3e50;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+  font-size: 0.9rem;
+}
+
+.screenshot-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.screenshot-item {
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+  overflow: hidden;
+}
+
+.screenshot-thumbnail {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+}
+
+.screenshot-info {
+  padding: 0.5rem;
+}
+
+.screenshot-filename {
+  color: #2c3e50;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.screenshot-note {
+  color: #6c757d;
+  font-size: 0.7rem;
+  display: block;
+}
+
+.no-analysis-data {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+
+.no-data-text {
+  margin: 0 0 0.5rem 0;
+}
+
+.no-data-subtitle {
+  font-size: 0.9rem;
+  margin: 0;
 }
 
 /* Action Buttons */

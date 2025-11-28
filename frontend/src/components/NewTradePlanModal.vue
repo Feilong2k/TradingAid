@@ -299,8 +299,10 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, reactive } from 'vue';
 import axios from 'axios';
+import { useAuthStore } from '../stores/auth.js';
 
 const emit = defineEmits(['close', 'plan-created']);
+const authStore = useAuthStore();
 
 const currentStep = ref(1);
 const showAddAsset = ref(false);
@@ -381,7 +383,7 @@ const addNewAsset = async () => {
     const response = await axios.post(`${apiBaseUrl}/api/config/assets`, {
       asset: newAsset.value
     }, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      headers: { Authorization: `Bearer ${authStore.token}` }
     });
     
     if (response.data.success) {
@@ -494,7 +496,7 @@ const streamChat = async (messageText, retryCount = 0) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        'Authorization': `Bearer ${authStore.token}`
       },
       body: JSON.stringify({ 
         message: messageText, 
@@ -637,7 +639,7 @@ const submitEmotionalCheck = async () => {
     await axios.patch(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/emotional-state`, {
       emotionalState: getSanitizedEmotionalState()
     }, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      headers: { Authorization: `Bearer ${authStore.token}` }
     });
     emotionalSaved.value = true;
   } catch (err) {
@@ -715,9 +717,9 @@ const proceedToEmotionalCheck = async () => {
       timeframe: timeframeNormalized
     };
 
-    const response = await axios.post(`${apiBaseUrl}/api/trade-plans`, payload, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
-    });
+        const response = await axios.post(`${apiBaseUrl}/api/trade-plans`, payload, {
+          headers: { Authorization: `Bearer ${authStore.token}` }
+        });
 
     currentTradePlanId.value = response.data._id;
 
@@ -730,7 +732,7 @@ const proceedToEmotionalCheck = async () => {
     // Get today's trades for future context (MT5 ingest ready)
     try {
       const todayTradesResponse = await axios.get(`${apiBaseUrl}/api/trade-plans/today-trades`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+        headers: { Authorization: `Bearer ${authStore.token}` }
       });
       todayTrades.value = Array.isArray(todayTradesResponse.data) ? todayTradesResponse.data : [];
     } catch (e) {
@@ -765,6 +767,7 @@ const proceedToTechnicalAnalysis = async () => {
     await updateEmotionalState();
     emotionalSaved.value = true;
   }
+  // Open AnalysisModal instead of closing
   emit('plan-created', currentTradePlanId.value);
   closeModal();
 };
@@ -791,7 +794,7 @@ const updateEmotionalState = async () => {
     await axios.patch(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/emotional-state`, {
       emotionalState: getSanitizedEmotionalState()
     }, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      headers: { Authorization: `Bearer ${authStore.token}` }
     });
   } catch (error) {
     console.error('Error updating emotional state:', error);
@@ -804,7 +807,7 @@ const updateDecision = async (decision) => {
     await axios.patch(`${apiBaseUrl}/api/trade-plans/${currentTradePlanId.value}/decision`, {
       decision
     }, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      headers: { Authorization: `Bearer ${authStore.token}` }
     });
   } catch (error) {
     console.error('Error updating decision:', error);

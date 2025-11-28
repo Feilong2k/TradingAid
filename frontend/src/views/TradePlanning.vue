@@ -70,8 +70,17 @@
         <AnalysisModal
           v-if="showAnalysisModal"
           :trade-plan-id="currentAnalysisPlanId"
+          :current-timeframe="currentAnalysisTimeframe"
+          :show-back-button="showBackButton"
+          :is-last-timeframe="isLastTimeframe"
+          :asset="currentAnalysisPlan?.asset"
+          :timeframe="currentAnalysisPlan?.timeframe"
+          :direction="currentAnalysisPlan?.direction"
+          :created-at="currentAnalysisPlan?.createdAt"
           @close="showAnalysisModal = false"
-          @analysis-completed="handleAnalysisCompleted"
+          @back="handleAnalysisBack"
+          @next-timeframe="handleNextTimeframe"
+          @analysis-submitted="handleAnalysisCompleted"
         />
 
         <!-- Current Plans Section -->
@@ -179,6 +188,10 @@ const showDetailsModal = ref(false);
 const showAnalysisModal = ref(false);
 const selectedPlanId = ref(null);
 const currentAnalysisPlanId = ref(null);
+const currentAnalysisPlan = ref(null);
+const currentAnalysisTimeframe = ref('HTF');
+const showBackButton = ref(false);
+const isLastTimeframe = ref(false);
 const showDeleteConfirmation = ref(false);
 const planToDelete = ref(null);
 
@@ -270,11 +283,47 @@ const handlePlanDeleted = (planId) => {
   console.log('Trade plan deleted from details modal:', planId);
 };
 
-const handlePlanContinued = (tradePlan) => {
-  console.log('Continuing trade plan from details modal:', tradePlan);
-  // TODO: Implement continue functionality - open NewTradePlanModal in edit mode
-  // For now, just close the modal and show a message
-  alert('Continue functionality will be implemented in the next phase');
+const handlePlanContinued = (data) => {
+  console.log('Continuing trade plan from details modal:', data);
+  
+  // Close the details modal
+  showDetailsModal.value = false;
+  
+  // Set up analysis modal with trade plan data
+  currentAnalysisPlanId.value = data.tradePlan._id;
+  currentAnalysisPlan.value = data.tradePlan;
+  currentAnalysisTimeframe.value = 'HTF'; // Start with HTF analysis
+  showBackButton.value = false; // No back button for HTF
+  isLastTimeframe.value = false; // HTF is not the last timeframe
+  
+  // Open the analysis modal
+  showAnalysisModal.value = true;
+};
+
+const handleAnalysisBack = () => {
+  // Navigate back in the analysis workflow
+  if (currentAnalysisTimeframe.value === 'MTF') {
+    currentAnalysisTimeframe.value = 'HTF';
+    showBackButton.value = false;
+  } else if (currentAnalysisTimeframe.value === 'LTF') {
+    currentAnalysisTimeframe.value = 'MTF';
+    showBackButton.value = true;
+  }
+};
+
+const handleNextTimeframe = (result) => {
+  console.log('Moving to next timeframe after:', result);
+  
+  // Navigate to next timeframe in the analysis workflow
+  if (currentAnalysisTimeframe.value === 'HTF') {
+    currentAnalysisTimeframe.value = 'MTF';
+    showBackButton.value = true;
+    isLastTimeframe.value = false;
+  } else if (currentAnalysisTimeframe.value === 'MTF') {
+    currentAnalysisTimeframe.value = 'LTF';
+    showBackButton.value = true;
+    isLastTimeframe.value = true;
+  }
 };
 
 const deletePlan = (planId) => {

@@ -154,19 +154,46 @@ Support multiple analysis entries per plan (LTF/MTF/HTF) with one or more screen
 
 ---
 
-## Subtask 9.4 - Aria Technical Assessment Integration
+## Subtask 9.4 - TradePlanDetailsModal Technical Analysis Sections
+
+│                                                                                   
+│   Priority: high  Status: ○ pending                                               
+│   Dependencies: 9.3 (UI)                                                              
+│                                                                                   
+│   Description: Update TradePlanDetailsModal to display technical analysis entries
+│   with separate sections for HTF, MTF, LTF analysis. Show 7-element grading with
+│   calculated scores, Aria technical assessments, screenshots and notes for each
+│   analysis entry. Support navigation from analysis modal via back button.
+│                                                                                   
+│   Files to Modify:                                                                
+│   - frontend/src/components/TradePlanDetailsModal.vue (add technical analysis sections)
+│   - frontend/src/views/TradePlanning.vue (navigation state management)           
+│                                                                                   
+│   Technical Details:                                                              
+│   - Add expandable sections for HTF/MTF/LTF analysis                             
+│   - Display 7-element grading with visual score indicators                       
+│   - Show Aria technical assessments with structured breakdown                    
+│   - Include screenshot galleries for each timeframe                              
+│   - Support back button navigation from AnalysisModal
+
+---
+
+## Subtask 9.5 - Aria Technical Assessment Integration
 
 │                                                                                   
 │   Priority: high  Status: ○ pending                                               
 │   Dependencies: 9.3 (UI), #5 (Aria chat)                                                              
 │                                                                                   
 │   Description: When user submits analysis entry, automatically generate Aria      
-│   technical assessment. Extend AI service to understand the 7-element grading     
-│   system and provide structured technical feedback. Store assessment with entry.
+│   technical assessment immediately for each timeframe and overall analysis.      
+│   Extend AI service to understand the 7-element grading system and provide       
+│   structured technical feedback with: 1) structured breakdown of 7 elements with 
+│   commentary, 2) free-form analysis, 3) trade recommendation. Store assessment   
+│   with entry and show error message with retry option on failure.
 
 ---
 
-## Subtask 9.5 - Analysis Timeline Display
+## Subtask 9.6 - Analysis Timeline Display
 
 │                                                                                   
 │   Priority: medium  Status: ○ pending                                               
@@ -235,6 +262,34 @@ Support multiple analysis entries per plan (LTF/MTF/HTF) with one or more screen
 │   Description: Add export functionality for analysis timeline.                    
 │   Generate PDF reports of all analysis entries with screenshots and               
 │   technical assessments for review and sharing.
+
+---
+
+## Subtask 9.11 - Bug Fixes and UI Improvements
+
+│                                                                                   
+│   Priority: high  Status: ✅ completed                                               
+│   Dependencies: 9.3 (Analysis Entry Creation UI)                                                              
+│                                                                                   
+│   Description: Fixed critical bugs and improved UI consistency:                      
+│   - ✅ Fixed SSE streaming connection status bug ("retrying to connect" message appears when Aria successfully replies)
+│   - ✅ Updated AnalysisModal titles to match emotional check modal format: "BTC 15m long signal - 11/28/2025, 7:54:32AM, HTF Analysis"
+│   - ✅ Connected "Continue Plan" button in TradePlanDetailsModal to open HTF analysis modal
+│   - ✅ Ensured proper trade plan data flow between components
+│                                                                                   
+│   Files Modified:                                                                
+│   - frontend/src/components/TradePlanDetailsModal.vue                            
+│   - frontend/src/components/AnalysisModal.vue                                   
+│   - frontend/src/views/TradePlanning.vue                                        
+│   - docs/KNOWLEDGE_TRANSFER.md                                                  
+│                                                                                   
+│   Key Fixes Implemented:                                                                     
+│   - Improved SSE streaming state management                                       
+│   - Added trade plan details props to AnalysisModal                               
+│   - Updated modal title formatting                                                
+│   - Connected continue plan workflow to analysis modal
+│   - Added analysis workflow state management in TradePlanning.vue
+│   - Updated documentation to reflect fixes
 
 ---
 

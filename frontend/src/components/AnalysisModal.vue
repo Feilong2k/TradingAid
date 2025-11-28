@@ -268,6 +268,22 @@ export default {
     isLastTimeframe: {
       type: Boolean,
       default: false
+    },
+    asset: {
+      type: String,
+      default: ''
+    },
+    timeframe: {
+      type: String,
+      default: ''
+    },
+    direction: {
+      type: String,
+      default: ''
+    },
+    createdAt: {
+      type: String,
+      default: ''
     }
   },
   emits: ['close', 'back', 'next-timeframe', 'analysis-submitted'],
@@ -300,7 +316,13 @@ export default {
 
     // Computed properties
     const modalTitle = computed(() => {
-      return `${props.currentTimeframe} Analysis`
+      const asset = props.asset || 'Unknown'
+      const timeframe = props.timeframe || 'Unknown'
+      const direction = props.direction || 'Unknown'
+      const createdAt = props.createdAt ? new Date(props.createdAt).toLocaleString() : ''
+      const analysisType = props.currentTimeframe
+      
+      return `${asset} ${timeframe} ${direction} signal - ${createdAt}, ${analysisType} Analysis`
     })
 
     const submitButtonText = computed(() => {
