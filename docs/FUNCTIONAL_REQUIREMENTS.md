@@ -128,6 +128,65 @@ Status: Partial (Implemented basic logging; Planned analytics events)
 Acceptance Criteria
 - Log noise is minimized in production; diagnostic info is sufficient in development.
 
+## 13) Multi-Timeframe Analysis Workflow (Screenshots + Aria Review)
+Status: Planned
+- Capture and upload multi-timeframe (e.g., LTF/MTF/HTF) screenshots to a plan-specific gallery.
+- User declares preliminary trading direction; Aria analyzes screenshots + user notes and produces technical assessment.
+- Record each analysis step (timestamped), tied to the same Trading Plan.
+Acceptance Criteria
+- Each Trading Plan displays a chronological multi-timeframe analysis log with screenshots and Aria’s notes.
+- Aria responses reference specific screenshots and timeframe context.
+
+## 14) Entry Trigger Checklist & Risk Controls
+Status: Planned
+- Provide an entry trigger checklist to determine entry price, stop loss, and position size.
+- Enforce position sizing rules with configurable risk per trade.
+- Persist the checklist and computed values on the Trading Plan.
+Acceptance Criteria
+- Checklist completion persists final entry/SL/size; computed risk matches configuration; edits are versioned or tracked.
+
+## 15) Ongoing Intratrade Analysis & Emotional Check-ins
+Status: Planned
+- Allow multiple ongoing analyses on lower and medium TF during trade lifecycle; each entry timestamped and attached to the plan.
+- Insert periodic emotional check-ins during trade to capture state changes and coping actions.
+Acceptance Criteria
+- Plan timeline shows alternating technical/emotional entries; entries are filterable by type/timeframe; Aria provides situational support.
+
+## 16) Automatic Linking of Executed Trades to Plans
+Status: Planned
+- When an execution occurs (via MT5 ingestion), link the TradeLog to its Trading Plan automatically (match by plan ID, ticket, or association).
+- All plan-related screenshots are viewable alongside related TradeLog(s).
+Acceptance Criteria
+- Executed trades appear within the plan under “Executions” with ticket, fills, P/L; screenshot gallery remains accessible from both plan and log.
+
+## 17) Post-Trade Review
+Status: Planned
+- Provide a structured review template (what worked, deviations, emotion management, lessons, next actions).
+- Aria summarizes key insights and suggests improvements.
+Acceptance Criteria
+- Completed trades include a Review section; Aria’s summary references plan data, logs, and emotional entries.
+
+## 18) TradingView Integration (Charts & Data)
+Status: Planned
+- Integrate TradingView charts for in-app analysis (embed or API), including annotated snapshots attached to a plan.
+- Persist annotations and link to timestamps/trade stages.
+Acceptance Criteria
+- Users can open a chart within the app, create annotations, and save snapshots that appear in the plan’s gallery.
+
+## 19) In-App Trade Placement
+Status: Planned
+- Enable order placement from within the app based on entry checklist (broker integration TBD).
+- Capture execution feedback and reconcile with Trade Logs.
+Acceptance Criteria
+- Orders initiated in-app are confirmed with broker feedback and reflected in plan/trade logs.
+
+## 20) Aria Longitudinal Coaching & Learning
+Status: Planned
+- Aria reviews historical trades/plans to provide habit insights and technical improvement advice.
+- Over time, Aria adapts/learns TA preferences and improves prompt chains and analysis.
+Acceptance Criteria
+- “Insights” view aggregates patterns (e.g., entry discipline, stop placement, emotional triggers), with actionable suggestions and tracking of follow-ups.
+
 ---
 
 ## Recommended Additions (to make this document more complete)
