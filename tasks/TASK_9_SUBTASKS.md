@@ -238,11 +238,11 @@ Support multiple analysis entries per plan (LTF/MTF/HTF) with one or more screen
 
 ---
 
-## Subtask 9.6 - Timeframe Filtering
+## Subtask 9.7 - Timeframe Filtering
 
 │                                                                                   
 │   Priority: medium  Status: ○ pending                                               
-│   Dependencies: 9.5 (Timeline display)                                                              
+│   Dependencies: 9.6 (Timeline display)                                                              
 │                                                                                   
 │   Description: Add timeframe filter controls to analysis timeline.                
 │   Allow filtering by HTF/MTF/LTF or combinations. Implement real-time             
@@ -250,7 +250,7 @@ Support multiple analysis entries per plan (LTF/MTF/HTF) with one or more screen
 
 ---
 
-## Subtask 9.7 - Screenshot Gallery Integration
+## Subtask 9.8 - Screenshot Gallery Integration
 
 │                                                                                   
 │   Priority: medium  Status: ○ pending                                               
@@ -262,11 +262,11 @@ Support multiple analysis entries per plan (LTF/MTF/HTF) with one or more screen
 
 ---
 
-## Subtask 9.8 - Decision Logic Workflow
+## Subtask 9.9 - Decision Logic Workflow
 
 │                                                                                   
 │   Priority: high  Status: ○ pending                                               
-│   Dependencies: 9.3 (UI), 9.5 (Timeline display)                                                              
+│   Dependencies: 9.3 (UI), 9.6 (Timeline display)                                                              
 │                                                                                   
 │   Description: Implement the 4-rule decision logic for trade direction.           
 │   Create interface for discretionary overall direction selection.                 
@@ -274,7 +274,7 @@ Support multiple analysis entries per plan (LTF/MTF/HTF) with one or more screen
 
 ---
 
-## Subtask 9.9 - Analysis Entry Editing
+## Subtask 9.10 - Analysis Entry Editing
 
 │                                                                                   
 │   Priority: low  Status: ○ pending                                               
@@ -286,11 +286,11 @@ Support multiple analysis entries per plan (LTF/MTF/HTF) with one or more screen
 
 ---
 
-## Subtask 9.10 - Export and Reporting
+## Subtask 9.11 - Export and Reporting
 
 │                                                                                   
 │   Priority: low  Status: ○ pending                                               
-│   Dependencies: 9.5 (Timeline display)                                                              
+│   Dependencies: 9.6 (Timeline display)                                                              
 │                                                                                   
 │   Description: Add export functionality for analysis timeline.                    
 │   Generate PDF reports of all analysis entries with screenshots and               
@@ -298,7 +298,7 @@ Support multiple analysis entries per plan (LTF/MTF/HTF) with one or more screen
 
 ---
 
-## Subtask 9.11 - AnalysisModal Bug Fixes and UI Improvements
+## Subtask 9.12 - AnalysisModal Bug Fixes and UI Improvements
 
 │                                                                                   
 │   Priority: high  Status: ○ pending                                               
@@ -324,100 +324,81 @@ Support multiple analysis entries per plan (LTF/MTF/HTF) with one or more screen
 
 ---
 
-## Implementation Order
+## NEW SUBTASKS - Dual Persona System & API Fixes
 
-1. **9.1** - Database Schema Extensions (foundation)
-2. **9.2** - Backend API Endpoints (data layer)
-3. **9.3** - Analysis Entry Creation UI (user interface)
-4. **9.8** - Decision Logic Workflow (core functionality)
-5. **9.4** - Aria Technical Assessment Integration (AI enhancement)
-6. **9.5** - Analysis Timeline Display (visualization)
-7. **9.7** - Screenshot Gallery Integration (media handling)
-8. **9.6** - Timeframe Filtering (user experience)
-9. **9.9** - Analysis Entry Editing (feature completeness)
-10. **9.10** - Export and Reporting (advanced features)
+## Subtask 9.13 - Dual Persona System: Wesley Technical Analyst
 
----
-
-## Technical Specifications
-
-### Database Schema Changes
-```javascript
-// Add to TradePlan schema
-analysisEntries: [{
-  timeframe: { type: String, enum: ['HTF', 'MTF', 'LTF'], required: true },
-  
-  // 7 Technical Element Selections (store selections only, calculate grades dynamically)
-  trend: { type: String, enum: ['up_trending_above_ma', 'up_consolidation', 'down_trending_below_ma', 'down_consolidation', 'unclear'] },
-  choch: { type: String, enum: ['no_change', 'up_trend_broken', 'down_trend_broken', 'up_confirmed_not_verified', 'down_confirmed_not_verified', 'up_verified_not_confirmed', 'down_verified_not_confirmed', 'up_confirmed_verified', 'down_confirmed_verified'] },
-  divergence: { type: String, enum: ['none', 'five_waves_up_divergence', 'five_waves_down_divergence', 'three_waves_up_divergence', 'three_waves_down_divergence'] },
-  stochastics: { type: String, enum: ['oversold', 'overbought', 'moving_up', 'moving_down', 'directionless', 'divergence_overbought', 'divergence_oversold'] },
-  timeCriteria: { type: String, enum: ['uptrend_consolidation_met', 'downtrend_consolidation_met', 'uptrend_time_not_over', 'downtrend_time_not_over', 'consolidation_not_met', 'trend_time_over', 'not_valid'] },
-  atrAnalysis: { type: String, enum: ['up_candle_high', 'down_candle_high', 'up_candle_medium', 'down_candle_medium', 'low'] },
-  movingAverages: { type: String, enum: ['crossing_up', 'fanning_up', 'crossing_down', 'fanning_down', 'unclear'] },
-  
-  // Calculated Values (computed on the fly)
-  // Note: Grades are calculated dynamically from selections above
-  
-  // Discretionary Fields
-  discretionaryOverallDirection: { type: String, enum: ['long', 'short', 'unclear'] },
-  notes: String,
-  
-  // Media - Support both MT5 files and TradingView links
-  screenshots: [{
-    url: String,
-    filename: String,
-    uploadedAt: Date,
-    type: { type: String, enum: ['mt5_file', 'tradingview_link'], default: 'mt5_file' },
-    note: String, // Individual screenshot notes
-    // Naming convention for MT5 files: TP_{planId}_{timeframe}_{timestamp}_{asset}.png
-  }],
-  
-  // AI Assessment with Versioning
-  technicalAssessment: {
-    text: String,
-    modelVersion: String,
-    promptVersion: String,
-    confidenceScore: Number,
-    assessmentTimestamp: { type: Date, default: Date.now }
-  },
-  
-  // Timestamps
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: Date
-}]
-```
-
-### Indexing Strategy
-- No additional indexes required (small data volume per plan)
-- Rely on existing trade plan indexes for efficient queries
-
-### API Routes
-- `POST /api/trade-plans/:id/analysis-entries`
-- `GET /api/trade-plans/:id/analysis-entries` 
-- `PUT /api/trade-plans/:id/analysis-entries/:entryId`
-- `DELETE /api/trade-plans/:id/analysis-entries/:entryId`
-
-### UI Components Needed
-- `AnalysisEntryForm.vue` - Create/edit analysis entries with 7-element grading
-- `AnalysisTimeline.vue` - Display chronological entries
-- `TimeframeFilter.vue` - Filter controls
-- `AnalysisEntryCard.vue` - Individual entry display
-- `DecisionLogicWorkflow.vue` - 4-rule decision logic interface
-- `OverallAnalysisModal.vue` - Summary table, 4-rule decision logic, overall direction selection, screenshot attachment with individual notes
-
-### Integration Points
-- Extend existing trade plan details modal
-- Reuse screenshot upload from trade logs
-- Integrate with Aria chat service for technical assessments
-- Maintain consistent styling with existing components
+│                                                                                   
+│   Priority: high  Status: ○ pending                                               
+│   Dependencies: 9.3 (Analysis Entry Creation UI)                                                              
+│                                                                                   
+│   Description: Create dedicated technical analyst persona "Wesley" to separate   
+│   emotional support (Aria) from technical analysis. Implement dual-persona system
+│   with separate conversation storage and distinct communication styles.
+│                                                                                   
+│   Files to Create/Modify:                                                         
+│   - backend/src/config/aiPersonality.js (add Wesley persona)                    
+│   - frontend/src/components/TradePlanDetailsModal.vue (add dual tabs)           
+│   - backend/src/routes/tradePlans.js (add Wesley conversation storage)          
+│                                                                                   
+│   Key Features to Implement:                                                     
+│   - Wesley persona: Male technical analyst focused on data-driven analysis      
+│   - Dual tabs in TradePlanDetailsModal: Aria (emotional) and Wesley (technical) 
+│   - Separate conversation storage for each persona                              
+│   - Distinct visual styling (colors, avatars) for each persona                  
+│   - Analysis type dropdown in Wesley tab for HTF/MTF/LTF selection              
+│   - Modal triggers: Aria tab → Emotional Check-in, Wesley tab → Analysis Modal  
+│   - Wesley responses focus on opinions, not repetition of user inputs
 
 ---
 
-## Estimated Effort
-- **High Priority Subtasks (9.1-9.4, 9.8)**: 3-4 days
-- **Medium Priority Subtasks (9.5-9.7)**: 2-3 days  
-- **Low Priority Subtasks (9.9-9.10)**: 1-2 days
-- **Total Estimated**: 6-9 days
+## Subtask 9.14 - Backend API Fixes and Data Persistence
 
-Ready to begin implementation with Subtask 9.1 - Database Schema Extensions.
+│                                                                                   
+│   Priority: critical  Status: ○ pending                                               
+│   Dependencies: 9.2 (Backend API), 9.3 (UI)                                                              
+│                                                                                   
+│   Description: Fix critical backend API issues and ensure proper data persistence
+│   for analysis entries. Resolve "I encountered an error submitting your analysis" 
+│   error and ensure all data is properly saved to MongoDB.
+│                                                                                   
+│   Files to Modify:                                                                
+│   - backend/src/routes/tradePlans.js (fix analysis entry endpoints)             
+│   - backend/src/models/TradePlan.js (ensure proper schema validation)           
+│   - frontend/src/components/AnalysisModal.vue (fix API calls)                  
+│                                                                                   
+│   Key Features to Implement:                                                     
+│   - Fix POST /api/trade-plans/:id/analysis-entries endpoint                     
+│   - Ensure all analysis form data is saved to MongoDB                           
+│   - Save chat conversations with analysis entries                               
+│   - Fix Next button functionality to properly save data                         
+│   - Add proper error handling and validation                                    
+│   - Test data persistence across all timeframes
+
+---
+
+## Subtask 9.15 - UI Improvements and Screenshot Integration
+
+│                                                                                   
+│   Priority: high  Status: ○ pending                                               
+│   Dependencies: 9.3 (UI), 9.13 (Dual Persona)                                                              
+│                                                                                   
+│   Description: Implement UI improvements and screenshot integration features     
+│   discussed during planning. Enhance user experience with better visual feedback
+│   and screenshot handling.
+│                                                                                   
+│   Files to Modify:                                                                
+│   - frontend/src/components/AnalysisModal.vue (UI improvements)                
+│   - frontend/src/components/TradePlanDetailsModal.vue (screenshot integration)  
+│                                                                                   
+│   Key Features to Implement:                                                     
+│   - Rename "Get Aria Analysis" button to "Technical Analysis"                   
+│   - Add screenshot thumbnails in chat with click-to-expand functionality       
+│   - Ensure Wesley AI can access and analyze screenshot content                  
+│   - Improve error messages with specific guidance                               
+│   - Add visual indicators for successful data saving                            
+│   - Implement loading states for all API operations
+
+---
+
+##

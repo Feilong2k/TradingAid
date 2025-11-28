@@ -59,13 +59,6 @@
                 <span class="grade-value">{{ totalGrade }}</span>
                 <span class="bias-indicator">{{ directionalBias }}</span>
               </div>
-              <button 
-                @click="getAriaAnalysis" 
-                class="aria-analysis-button"
-                :disabled="!isFormValid || isGettingAriaAnalysis"
-              >
-                {{ isGettingAriaAnalysis ? 'Analyzing...' : 'Get Aria Analysis' }}
-              </button>
             </div>
           </div>
 
@@ -238,6 +231,14 @@
                 type="button"
               >
                 ← Back
+              </button>
+              <button 
+                @click="getAriaAnalysis" 
+                class="nav-button aria-analysis-button"
+                :disabled="!isFormValid || isGettingAriaAnalysis"
+                type="button"
+              >
+                {{ isGettingAriaAnalysis ? 'Analyzing...' : 'Get Aria Analysis' }}
               </button>
               <button 
                 type="submit" 
