@@ -670,6 +670,7 @@ ${totalGrade.value > 5 ? 'Consider long positions with proper risk management' :
       isThinking,
       isTyping,
       isSubmitting,
+      isGettingAriaAnalysis,
       chatMessages,
       conversation,
       formData,
@@ -686,6 +687,7 @@ ${totalGrade.value > 5 ? 'Consider long positions with proper risk management' :
       removeScreenshot,
       sendUserMessage,
       submitAnalysis,
+      getAriaAnalysis,
       closeModal,
       goBack
     }
