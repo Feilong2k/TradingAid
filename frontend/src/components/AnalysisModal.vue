@@ -53,10 +53,19 @@
         <div class="analysis-column">
           <div class="analysis-header">
             <h3>Technical Analysis - {{ currentTimeframe }}</h3>
-            <div class="grade-display" :class="getGradeClass(totalGrade)">
-              <span class="grade-label">Total Grade:</span>
-              <span class="grade-value">{{ totalGrade }}</span>
-              <span class="bias-indicator">{{ directionalBias }}</span>
+            <div class="analysis-header-controls">
+              <div class="grade-display" :class="getGradeClass(totalGrade)">
+                <span class="grade-label">Total Grade:</span>
+                <span class="grade-value">{{ totalGrade }}</span>
+                <span class="bias-indicator">{{ directionalBias }}</span>
+              </div>
+              <button 
+                @click="getAriaAnalysis" 
+                class="aria-analysis-button"
+                :disabled="!isFormValid || isGettingAriaAnalysis"
+              >
+                {{ isGettingAriaAnalysis ? 'Analyzing...' : 'Get Aria Analysis' }}
+              </button>
             </div>
           </div>
 
@@ -224,7 +233,6 @@
             <!-- Navigation Buttons -->
             <div class="navigation-buttons">
               <button 
-                v-if="showBackButton" 
                 @click="goBack" 
                 class="nav-button back-button"
                 type="button"
@@ -294,6 +302,7 @@ export default {
     const isThinking = ref(false)
     const isTyping = ref(false)
     const isSubmitting = ref(false)
+    const isGettingAriaAnalysis = ref(false)
     const chatMessages = ref(null)
     const conversation = ref([])
 
@@ -524,7 +533,7 @@ export default {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
           },
           body: JSON.stringify(analysisData)
         })
@@ -558,6 +567,88 @@ export default {
 
     const closeModal = () => {
       emit('close')
+    }
+
+    const getAriaAnalysis = async () => {
+      if (!isFormValid.value) return
+      
+      isGettingAriaAnalysis.value = true
+      
+      try {
+        // Add user message showing the analysis data
+        const analysisSummary = `I've completed my ${props.currentTimeframe} analysis with the following selections:
+- Trend: ${formData.value.trend} (${getElementScore('trend')})
+- CHoCH: ${formData.value.choch} (${getElementScore('choch')})
+- Divergence: ${formData.value.divergence} (${getElementScore('divergence')})
+- Stochastics: ${formData.value.stochastics} (${getElementScore('stochastics')})
+- Time Criteria: ${formData.value.timeCriteria} (${getElementScore('timeCriteria')})
+- ATR Analysis: ${formData.value.atrAnalysis} (${getElementScore('atrAnalysis')})
+- Moving Averages: ${formData.value.movingAverages} (${getElementScore('movingAverages')})
+
+Total Grade: ${totalGrade.value} (${directionalBias.value})
+
+Please provide your technical assessment of this analysis.`
+
+        conversation.value.push({
+          id: Date.now(),
+          role: 'user',
+          content: analysisSummary
+        })
+
+        await scrollToBottom()
+
+        // Simulate Aria analysis (will be replaced with actual API call)
+        isThinking.value = true
+        setTimeout(() => {
+          isThinking.value = false
+          isTyping.value = true
+          
+          const assistantMessage = {
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: ''
+          }
+          conversation.value.push(assistantMessage)
+
+          const response = `Based on your ${props.currentTimeframe} analysis with a total grade of ${totalGrade.value} (${directionalBias.value}), here's my technical assessment:
+
+**Structured Breakdown:**
+1. **Trend Analysis**: Your trend selection shows ${formData.value.trend.replace(/_/g, ' ')} which contributes ${getElementScore('trend')} to the overall grade.
+2. **CHoCH Pattern**: The ${formData.value.choch.replace(/_/g, ' ')} pattern indicates ${getElementScore('choch') > 0 ? 'bullish' : 'bearish'} momentum.
+3. **Divergence Signals**: ${formData.value.divergence.replace(/_/g, ' ')} provides ${getElementScore('divergence') > 0 ? 'supportive' : 'contrary'} evidence.
+
+**Free-form Analysis:**
+The combination of these technical elements suggests ${directionalBias.value.toLowerCase()} bias. The ${props.currentTimeframe} timeframe shows ${totalGrade.value > 0 ? 'constructive' : 'deteriorating'} technical structure.
+
+**Recommendation:**
+${totalGrade.value > 5 ? 'Consider long positions with proper risk management' : totalGrade.value < -5 ? 'Consider short positions with proper risk management' : 'Wait for clearer directional signals before entering trades'}.`
+
+          // Simulate typing effect
+          let i = 0
+          const typeWriter = () => {
+            if (i < response.length) {
+              assistantMessage.content += response.charAt(i)
+              i++
+              setTimeout(typeWriter, 20)
+            } else {
+              isTyping.value = false
+              scrollToBottom()
+            }
+          }
+          typeWriter()
+        }, 1500)
+        
+      } catch (error) {
+        console.error('Error getting Aria analysis:', error)
+        conversation.value.push({
+          id: Date.now(),
+          role: 'assistant',
+          content: "I encountered an error analyzing your technical selections. Please try again or contact support if the issue persists."
+        })
+        await scrollToBottom()
+      } finally {
+        isGettingAriaAnalysis.value = false
+      }
     }
 
     const goBack = () => {
@@ -786,6 +877,33 @@ export default {
   margin: 0;
   color: #1f2937;
   font-size: 1.1rem;
+}
+
+.analysis-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.aria-analysis-button {
+  padding: 8px 16px;
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.aria-analysis-button:hover:not(:disabled) {
+  background: #7c3aed;
+}
+
+.aria-analysis-button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
 }
 
 .grade-display {

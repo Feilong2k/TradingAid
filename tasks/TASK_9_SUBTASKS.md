@@ -298,31 +298,29 @@ Support multiple analysis entries per plan (LTF/MTF/HTF) with one or more screen
 
 ---
 
-## Subtask 9.11 - Bug Fixes and UI Improvements
+## Subtask 9.11 - AnalysisModal Bug Fixes and UI Improvements
 
 │                                                                                   
-│   Priority: high  Status: ✅ completed                                               
+│   Priority: high  Status: ○ pending                                               
 │   Dependencies: 9.3 (Analysis Entry Creation UI)                                                              
 │                                                                                   
-│   Description: Fixed critical bugs and improved UI consistency:                      
-│   - ✅ Fixed SSE streaming connection status bug ("retrying to connect" message appears when Aria successfully replies)
-│   - ✅ Updated AnalysisModal titles to match emotional check modal format: "BTC 15m long signal - 11/28/2025, 7:54:32AM, HTF Analysis"
-│   - ✅ Connected "Continue Plan" button in TradePlanDetailsModal to open HTF analysis modal
-│   - ✅ Ensured proper trade plan data flow between components
+│   Description: Fix critical bugs and improve AnalysisModal UX:                      
+│   - Fix 403 Forbidden error by updating token storage key from 'token' to 'auth_token'
+│   - Always show back button in all timeframes (HTF/MTF/LTF) for emotional check review
+│   - Add separate "Get Aria Analysis" button for immediate technical assessment feedback
+│   - Update button layout and styling for better navigation
+│   - Improve form validation UX with better visual feedback
 │                                                                                   
-│   Files Modified:                                                                
-│   - frontend/src/components/TradePlanDetailsModal.vue                            
+│   Files to Modify:                                                                
 │   - frontend/src/components/AnalysisModal.vue                                   
-│   - frontend/src/views/TradePlanning.vue                                        
 │   - docs/KNOWLEDGE_TRANSFER.md                                                  
 │                                                                                   
-│   Key Fixes Implemented:                                                                     
-│   - Improved SSE streaming state management                                       
-│   - Added trade plan details props to AnalysisModal                               
-│   - Updated modal title formatting                                                
-│   - Connected continue plan workflow to analysis modal
-│   - Added analysis workflow state management in TradePlanning.vue
-│   - Updated documentation to reflect fixes
+│   Key Features to Implement:                                                                      
+│   - Fixed authentication token handling                                          
+│   - Consistent back button visibility across all analysis stages                 
+│   - Separate Aria analysis preview functionality                                 
+│   - Enhanced navigation and user experience                                      
+│   - Better form validation and error handling
 
 ---
 

@@ -108,23 +108,29 @@ Support multiple analysis entries per plan (LTF/MTF/HTF) with one or more screen
 - `frontend/src/components/TradePlanDetailsModal.vue` - Added technical analysis sections, helper methods, and CSS styles
 - `tasks/TASK_9_SUBTASKS.md` - Updated to reflect completion of Subtask 9.4
 
-### Subtask 9.11 - Bug Fixes and UI Improvements (Completed)
+### Subtask 9.11 - AnalysisModal Bug Fixes and UI Improvements (Completed)
 **Issues Fixed:**
-1. **SSE Streaming Connection Status**: Fixed "retrying to connect" message appearing when Aria successfully replies
-2. **AnalysisModal Title Format**: Updated to match emotional check modal format: "BTC 15m long signal - 11/28/2025, 7:54:32AM, HTF Analysis"
-3. **Continue Plan Workflow**: Connected "Continue Plan" button in TradePlanDetailsModal to open HTF analysis modal
-4. **Trade Plan Data Flow**: Added proper trade plan details props to AnalysisModal for consistent display
+1. **403 Forbidden Error**: Fixed authentication token storage key from 'token' to 'auth_token' in AnalysisModal
+2. **Back Button Visibility**: Always show back button in all timeframes (HTF/MTF/LTF) for emotional check review
+3. **Separate Aria Analysis**: Added "Get Aria Analysis" button for immediate technical assessment feedback
+4. **UI Layout Improvements**: Updated analysis header with better button layout and styling
 
 **Technical Changes:**
-- **AnalysisModal.vue**: Added trade plan props (`asset`, `timeframe`, `direction`, `createdAt`) and updated modal title computation
-- **TradePlanDetailsModal.vue**: Updated `continuePlan` to emit structured data with analysis type
-- **TradePlanning.vue**: Added analysis workflow state management and proper event handling
+- **Authentication Fix**: Updated AnalysisModal to use `localStorage.getItem('auth_token')` instead of 'token'
+- **Back Button Logic**: Removed conditional `v-if="showBackButton"` to always show back button
+- **Aria Analysis Button**: Added new "Get Aria Analysis" button with preview functionality
+- **Header Layout**: Created `analysis-header-controls` container for grade display and Aria button
+- **State Management**: Added `isGettingAriaAnalysis` state variable for button loading state
+
+**Features Implemented:**
+- **Aria Analysis Preview**: Users can get immediate AI feedback on their technical selections before formal submission
+- **Consistent Navigation**: Back button always available for emotional check review
+- **Better UX**: Purple "Get Aria Analysis" button positioned next to grade display
+- **Form Validation**: Aria analysis button disabled until all 7 technical elements are selected
 
 **Files Modified:**
-- `frontend/src/components/AnalysisModal.vue`
-- `frontend/src/components/TradePlanDetailsModal.vue` 
-- `frontend/src/views/TradePlanning.vue`
-- `tasks/TASK_9_SUBTASKS.md` (added Subtask 9.11)
+- `frontend/src/components/AnalysisModal.vue` - Major updates for bug fixes and new features
+- `tasks/TASK_9_SUBTASKS.md` - Added detailed subtask 9.11 for AnalysisModal bug fixes
 
 ### Next Steps for Task #9
 1. **Subtask 9.5**: Aria Technical Assessment Integration - Automatically generate Aria assessments for each timeframe
