@@ -241,11 +241,21 @@
                 {{ isGettingAriaAnalysis ? 'Analyzing...' : 'Get Aria Analysis' }}
               </button>
               <button 
+                v-if="!props.isLastTimeframe"
+                @click="goToNextTimeframe" 
+                class="nav-button next-button"
+                :disabled="!isFormValid"
+                type="button"
+              >
+                Next →
+              </button>
+              <button 
+                v-else
                 type="submit" 
                 class="nav-button submit-button"
                 :disabled="!isFormValid || isSubmitting"
               >
-                {{ isSubmitting ? 'Submitting...' : submitButtonText }}
+                {{ isSubmitting ? 'Submitting...' : 'Complete Analysis' }}
               </button>
             </div>
           </form>
@@ -642,6 +652,19 @@ export default {
       }
     }
 
+    const goToNextTimeframe = () => {
+      if (!isFormValid.value) return
+      
+      // Simply emit the next-timeframe event without submitting to backend
+      // The form data will be preserved in the parent component
+      emit('next-timeframe', {
+        timeframe: props.currentTimeframe,
+        formData: formData.value,
+        totalGrade: totalGrade.value,
+        directionalBias: directionalBias.value
+      })
+    }
+
     const closeModal = () => {
       emit('close')
     }
@@ -766,7 +789,8 @@ ${totalGrade.value > 5 ? 'Consider long positions with proper risk management' :
       submitAnalysis,
       getAriaAnalysis,
       closeModal,
-      goBack
+      goBack,
+      goToNextTimeframe
     }
   }
 }
@@ -1185,6 +1209,21 @@ ${totalGrade.value > 5 ? 'Consider long positions with proper risk management' :
 }
 
 .aria-analysis-button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.next-button {
+  background: #3b82f6;
+  color: white;
+  margin-left: auto;
+}
+
+.next-button:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.next-button:disabled {
   background: #9ca3af;
   cursor: not-allowed;
 }
