@@ -66,6 +66,14 @@
           @plan-continued="handlePlanContinued"
         />
 
+        <!-- Analysis Modal -->
+        <AnalysisModal
+          v-if="showAnalysisModal"
+          :trade-plan-id="currentAnalysisPlanId"
+          @close="showAnalysisModal = false"
+          @analysis-completed="handleAnalysisCompleted"
+        />
+
         <!-- Current Plans Section -->
         <div class="section">
           <h3 class="section-title">Current Plans</h3>
@@ -162,12 +170,15 @@ import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth.js';
 import NewTradePlanModal from '../components/NewTradePlanModal.vue';
 import TradePlanDetailsModal from '../components/TradePlanDetailsModal.vue';
+import AnalysisModal from '../components/AnalysisModal.vue';
 import axios from 'axios';
 
 const authStore = useAuthStore();
 const showNewPlanModal = ref(false);
 const showDetailsModal = ref(false);
+const showAnalysisModal = ref(false);
 const selectedPlanId = ref(null);
+const currentAnalysisPlanId = ref(null);
 const showDeleteConfirmation = ref(false);
 const planToDelete = ref(null);
 
@@ -213,7 +224,19 @@ const loadOpenTradePlans = async () => {
 
 const handlePlanCreated = (planId) => {
   showNewPlanModal.value = false;
-  console.log('Trade plan created:', planId);
+  console.log('Trade plan created, opening analysis modal:', planId);
+  
+  // Open AnalysisModal for technical analysis
+  currentAnalysisPlanId.value = planId;
+  showAnalysisModal.value = true;
+  
+  // Refresh the current plans list
+  loadOpenTradePlans();
+};
+
+const handleAnalysisCompleted = (planId) => {
+  showAnalysisModal.value = false;
+  console.log('Analysis completed for plan:', planId);
   // Refresh the current plans list
   loadOpenTradePlans();
 };
