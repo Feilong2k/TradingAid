@@ -23,20 +23,13 @@
   2) Code changes and documentation updates are committed together
   3) Combined commit is pushed to remote repository
   4) Git history shows documentation is included with implementation
+  - **Scope of Docs Updates**:
+  - Update `docs/KNOWLEDGE_TRANSFER.md` and/or `docs/TRADING_PLAN_MODAL_DEVELOPMENT_PLAN.md` to reflect actual implemented changes
+  - Do not include planned but unimplemented work
 - **Commit Hygiene**:
   - Use conventional commits for code changes (e.g., `feat:`, `fix:`, `refactor:`)
   - Include documentation updates in the same commit as code changes
-- **Verification Step**:
-  - Before committing, verify documentation files are updated
-  - Ensure commit message describes both code and documentation changes
-- **Scope of Docs Updates**:
-  - Update `docs/KNOWLEDGE_TRANSFER.md` and/or `docs/TRADING_PLAN_MODAL_DEVELOPMENT_PLAN.md` to reflect actual implemented changes
-  - Do not include planned but unimplemented work
-- **Combined Commits**:
-  - Documentation updates should be included with code changes in single commits
-  - No separate documentation-only commits for implementation-related changes
-- **Auto-reminder**:
-  - Before any commit, ensure documentation is updated to reflect changes
+
 
 ### Code Structure Rules
 - **Respect Architecture**: Maintain clear separation between backend (Node.js/Express) and frontend (Vue 3)
@@ -68,6 +61,14 @@
 - **Authentication**: Respect JWT token authentication for protected routes
 - **Error Handling**: Implement proper error handling and user-friendly messages
 - **No Hardcoded Secrets**: Use environment variables for sensitive data
+
+### Command Syntax Rules
+- **PowerShell Compatibility**: Use semicolons (`;`) instead of `&&` for command chaining in PowerShell
+- **Command Examples**: 
+  - Use: `cd backend; npm run dev`
+  - Avoid: `cd backend && npm run dev`
+  - Use: `cd frontend; npm run build`
+  - Avoid: `cd frontend && npm run build`
 
 ### Quality Rules
 - **Code Consistency**: Follow existing code style and patterns

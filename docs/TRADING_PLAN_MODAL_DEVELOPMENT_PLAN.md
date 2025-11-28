@@ -665,18 +665,17 @@ This development plan ensures that the existing AI personality is fully leverage
 - **Consistent Navigation**: Always-visible scroll bars improve content discovery
 
 ### Immediate Next Work
-1. True server-driven streaming
-   - Add Server-Sent Events (SSE) or fetch-stream chunk parsing to backend route(s) when the upstream model supports token streaming
-   - Update frontend to consume streamed chunks for real-time rendering (replace current simulated typing)
-2. Thinking indicator polish
-   - Add graceful transition between "thinking" and "typing"
-   - Allow user to cancel or skip a long response
-3. Emotional details parity
-   - Ensure Trade Plan Details mirror any new fields added to emotional check (e.g., future image analysis, timers)
-4. Quality & resilience
+1. **Subtask 9.3 - Analysis Entry Creation UI**
+   - Create sequential analysis workflow triggered after emotional check
+   - Auto-open HTF analysis modal when user clicks "Proceed" in emotional check
+   - Implement separate modal for each timeframe (HTF→MTF→LTF) with navigation
+   - Form includes 7 technical element dropdowns with real-time grade calculation
+   - Support multiple screenshot uploads with URL + note fields
+   - Maintain chat accessibility throughout workflow
+2. Quality & resilience
    - Add rate limiting on chat endpoints
    - Improve error states for partial streaming (fallback to complete message)
-5. Workflow extensions (from Phase 3 plan)
+3. Workflow extensions (from Phase 3 plan)
    - Implement 5-minute break timer endpoints and UI
    - Persist and display timer status in the modal and details
 

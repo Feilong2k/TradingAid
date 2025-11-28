@@ -7,6 +7,16 @@ Status legend:
 - Partial: Core exists; enhancements planned
 - Planned: Not yet built
 
+## Tech Stack Alignment (Existing)
+Status: Implemented
+- Frontend: Vue 3.5.x, Vite 6.4.x, @vitejs/plugin-vue 5.x, Pinia 3.x, Vue Router 4.6.x
+- Backend: Node.js (dev shell 20.17.x; user global 24.11.x supported), Express 4.18.x, Mongoose 7.5.x, Joi 18.x, JSON Web Token 9.x, dotenv 16.x, axios 1.13.x, googleapis 166.x
+- Storage: MongoDB Atlas (Mongoose ODM)
+- Integrations: Google OAuth 2.0, Google Drive API (screenshots), MT5 EA via HTTP POST, DeepSeek Reasoner (AI)
+- Tooling: Nodemon 3.x (backend dev), Vite dev server (frontend)
+- Hosting: Netlify (frontend), Render (backend)
+- Environment variables (selected): MONGODB_URI, PORT, FRONTEND_URL, GOOGLE_CLIENT_ID/SECRET, JWT_SECRET, DEEPSEEK_API_KEY, MT5_API_KEY, DEFAULT_USER_ID, GOOGLE_DRIVE_FOLDER_ID, GOOGLE_SERVICE_ACCOUNT_KEY_PATH, ADMIN_EMAILS, NODE_ENV, DEBUG, VITE_API_BASE_URL
+
 ## 1) Authentication & Authorization
 Status: Implemented
 - Google OAuth 2.0 login flow; issue JWT on success.
@@ -131,10 +141,12 @@ Acceptance Criteria
 ## 13) Multi-Timeframe Analysis Workflow (Screenshots + Aria Review)
 Status: Planned
 - Capture and upload multi-timeframe (e.g., LTF/MTF/HTF) screenshots to a plan-specific gallery.
+- Support multiple analysis entries per Trading Plan; each entry can include one or more screenshots and notes and may be labeled by timeframe.
+- Answer set of questions (to be provided) for each TF that allows user to arrive at a conclusion
 - User declares preliminary trading direction; Aria analyzes screenshots + user notes and produces technical assessment.
 - Record each analysis step (timestamped), tied to the same Trading Plan.
 Acceptance Criteria
-- Each Trading Plan displays a chronological multi-timeframe analysis log with screenshots and Aria’s notes.
+- Each Trading Plan displays a chronological multi-timeframe analysis log with multiple entries, each with one or more screenshots and Aria’s notes.
 - Aria responses reference specific screenshots and timeframe context.
 
 ## 14) Entry Trigger Checklist & Risk Controls
@@ -156,8 +168,9 @@ Acceptance Criteria
 Status: Planned
 - When an execution occurs (via MT5 ingestion), link the TradeLog to its Trading Plan automatically (match by plan ID, ticket, or association).
 - All plan-related screenshots are viewable alongside related TradeLog(s).
+- Support multiple positions/executions per Trading Plan (scaling in/out), grouping related tickets under the plan.
 Acceptance Criteria
-- Executed trades appear within the plan under “Executions” with ticket, fills, P/L; screenshot gallery remains accessible from both plan and log.
+- Plans can display multiple executions with per-execution and aggregate P/L; screenshot gallery remains accessible from both plan and log.
 
 ## 17) Post-Trade Review
 Status: Planned

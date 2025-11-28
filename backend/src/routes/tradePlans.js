@@ -577,4 +577,287 @@ router.patch('/:id/decision', authenticateToken, validateRequest(decisionUpdateS
   }
 });
 
+// Grade calculation mapping for technical elements
+const gradeMapping = {
+  // Trend grades
+  trend: {
+    'up_trending_above_ma': 2,
+    'up_consolidation': 1,
+    'down_trending_below_ma': -2,
+    'down_consolidation': -1,
+    'unclear': 0
+  },
+  // CHoCH grades
+  choch: {
+    'no_change': 0,
+    'up_trend_broken': -1,
+    'down_trend_broken': 1,
+    'up_confirmed_not_verified': 2,
+    'down_confirmed_not_verified': -2,
+    'up_verified_not_confirmed': 2,
+    'down_verified_not_confirmed': -2,
+    'up_confirmed_verified': 3,
+    'down_confirmed_verified': -3
+  },
+  // Divergence grades
+  divergence: {
+    'none': 0,
+    'five_waves_up_divergence': -2,
+    'five_waves_down_divergence': 2,
+    'three_waves_up_divergence': -1,
+    'three_waves_down_divergence': 1
+  },
+  // Stochastics grades
+  stochastics: {
+    'oversold': 1,
+    'overbought': -1,
+    'moving_up': 1,
+    'moving_down': -1,
+    'directionless': 0,
+    'divergence_overbought': -1,
+    'divergence_oversold': 1
+  },
+  // Time Criteria grades
+  timeCriteria: {
+    'uptrend_consolidation_met': 1,
+    'downtrend_consolidation_met': -1,
+    'uptrend_time_not_over': 1,
+    'downtrend_time_not_over': -1,
+    'consolidation_not_met': 0,
+    'trend_time_over': 0,
+    'not_valid': 0
+  },
+  // ATR Analysis grades
+  atrAnalysis: {
+    'up_candle_high': 2,
+    'down_candle_high': -2,
+    'up_candle_medium': 1,
+    'down_candle_medium': -1,
+    'low': 0
+  },
+  // Moving Averages grades
+  movingAverages: {
+    'crossing_up': 2,
+    'fanning_up': 1,
+    'crossing_down': -2,
+    'fanning_down': -1,
+    'unclear': 0
+  }
+};
+
+// Calculate grades and directional bias for analysis entry
+function calculateAnalysisGrades(analysisEntry) {
+  const grades = {};
+  let totalGrade = 0;
+  
+  // Calculate individual element grades
+  for (const [element, selection] of Object.entries(analysisEntry)) {
+    if (gradeMapping[element] && selection) {
+      grades[element] = gradeMapping[element][selection] || 0;
+      totalGrade += grades[element];
+    }
+  }
+  
+  // Determine directional bias
+  let directionalBias = 'unclear';
+  if (totalGrade > 5) {
+    directionalBias = 'long';
+  } else if (totalGrade < -5) {
+    directionalBias = 'short';
+  }
+  
+  return { grades, totalGrade, directionalBias };
+}
+
+// Create new analysis entry
+router.post('/:id/analysis-entries', authenticateToken, async (req, res) => {
+  try {
+    const { timeframe, trend, choch, divergence, stochastics, timeCriteria, atrAnalysis, movingAverages, notes, screenshots } = req.body;
+    
+    // Find the trade plan
+    const tradePlan = await TradePlan.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+    
+    if (!tradePlan) {
+      return res.status(404).json({ error: 'Trade plan not found' });
+    }
+    
+    // Enforce HTF single-entry constraint
+    if (timeframe === 'HTF') {
+      const existingHTF = tradePlan.analysisEntries.find(entry => entry.timeframe === 'HTF');
+      if (existingHTF) {
+        return res.status(400).json({ error: 'Only one HTF analysis entry allowed per trade plan' });
+      }
+    }
+    
+    // Create analysis entry with calculated grades
+    const analysisEntry = {
+      timeframe,
+      trend,
+      choch,
+      divergence,
+      stochastics,
+      timeCriteria,
+      atrAnalysis,
+      movingAverages,
+      notes,
+      screenshots: screenshots || []
+    };
+    
+    // Calculate grades and directional bias
+    const { grades, totalGrade, directionalBias } = calculateAnalysisGrades(analysisEntry);
+    
+    // Add the analysis entry to the trade plan
+    tradePlan.analysisEntries.push({
+      ...analysisEntry,
+      ...grades,
+      totalGrade,
+      directionalBias
+    });
+    
+    await tradePlan.save();
+    
+    // Return the newly created analysis entry
+    const newEntry = tradePlan.analysisEntries[tradePlan.analysisEntries.length - 1];
+    res.status(201).json(newEntry);
+  } catch (error) {
+    console.error('Error creating analysis entry:', error);
+    res.status(500).json({ error: 'Failed to create analysis entry' });
+  }
+});
+
+// Get all analysis entries for a trade plan
+router.get('/:id/analysis-entries', authenticateToken, async (req, res) => {
+  try {
+    const tradePlan = await TradePlan.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+    
+    if (!tradePlan) {
+      return res.status(404).json({ error: 'Trade plan not found' });
+    }
+    
+    res.json(tradePlan.analysisEntries || []);
+  } catch (error) {
+    console.error('Error fetching analysis entries:', error);
+    res.status(500).json({ error: 'Failed to fetch analysis entries' });
+  }
+});
+
+// Update analysis entry
+router.put('/:id/analysis-entries/:entryId', authenticateToken, async (req, res) => {
+  try {
+    const { trend, choch, divergence, stochastics, timeCriteria, atrAnalysis, movingAverages, notes, screenshots } = req.body;
+    
+    // Find the trade plan
+    const tradePlan = await TradePlan.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+    
+    if (!tradePlan) {
+      return res.status(404).json({ error: 'Trade plan not found' });
+    }
+    
+    // Find the analysis entry
+    const analysisEntry = tradePlan.analysisEntries.id(req.params.entryId);
+    if (!analysisEntry) {
+      return res.status(404).json({ error: 'Analysis entry not found' });
+    }
+    
+    // Update the analysis entry
+    analysisEntry.trend = trend;
+    analysisEntry.choch = choch;
+    analysisEntry.divergence = divergence;
+    analysisEntry.stochastics = stochastics;
+    analysisEntry.timeCriteria = timeCriteria;
+    analysisEntry.atrAnalysis = atrAnalysis;
+    analysisEntry.movingAverages = movingAverages;
+    analysisEntry.notes = notes;
+    analysisEntry.screenshots = screenshots || analysisEntry.screenshots;
+    
+    // Recalculate grades and directional bias
+    const { grades, totalGrade, directionalBias } = calculateAnalysisGrades(analysisEntry);
+    
+    // Update calculated fields
+    Object.assign(analysisEntry, grades, { totalGrade, directionalBias });
+    analysisEntry.updatedAt = new Date();
+    
+    await tradePlan.save();
+    
+    res.json(analysisEntry);
+  } catch (error) {
+    console.error('Error updating analysis entry:', error);
+    res.status(500).json({ error: 'Failed to update analysis entry' });
+  }
+});
+
+// Delete analysis entry
+router.delete('/:id/analysis-entries/:entryId', authenticateToken, async (req, res) => {
+  try {
+    const tradePlan = await TradePlan.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+    
+    if (!tradePlan) {
+      return res.status(404).json({ error: 'Trade plan not found' });
+    }
+    
+    // Remove the analysis entry
+    tradePlan.analysisEntries.pull({ _id: req.params.entryId });
+    await tradePlan.save();
+    
+    res.json({ message: 'Analysis entry deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting analysis entry:', error);
+    res.status(500).json({ error: 'Failed to delete analysis entry' });
+  }
+});
+
+// Manually trigger Aria assessment for analysis entry
+router.post('/:id/analysis-entries/:entryId/aria-assessment', authenticateToken, async (req, res) => {
+  try {
+    const tradePlan = await TradePlan.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+    
+    if (!tradePlan) {
+      return res.status(404).json({ error: 'Trade plan not found' });
+    }
+    
+    // Find the analysis entry
+    const analysisEntry = tradePlan.analysisEntries.id(req.params.entryId);
+    if (!analysisEntry) {
+      return res.status(404).json({ error: 'Analysis entry not found' });
+    }
+    
+    // Generate Aria assessment based on the analysis entry
+    const assessment = await aiService.generateTechnicalAssessment(analysisEntry);
+    
+    // Update the analysis entry with Aria assessment
+    analysisEntry.technicalAssessment = {
+      text: assessment,
+      modelVersion: 'deepseek-reasoner',
+      promptVersion: 'technical-analysis-v1',
+      confidenceScore: 0.85, // Placeholder - could be calculated based on assessment quality
+      assessmentTimestamp: new Date()
+    };
+    
+    await tradePlan.save();
+    
+    res.json({
+      assessment: analysisEntry.technicalAssessment,
+      message: 'Aria assessment generated successfully'
+    });
+  } catch (error) {
+    console.error('Error generating Aria assessment:', error);
+    res.status(500).json({ error: 'Failed to generate Aria assessment' });
+  }
+});
+
 export default router;

@@ -1,0 +1,155 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Database schema and indexing (MongoDB/Mongoose)",
+        "description": "Design and implement MongoDB schemas to persist users, API key mapping, trade plans, emotional entries, chat messages, trade logs, assets. Add required indexes and constraints to support idempotent ingestion, valid status transitions, and efficient queries.",
+        "details": "Tech: Node.js 20+, Mongoose 7.5.x, MongoDB Atlas.\nSchemas (pseudo-code):\n- UserSchema { googleId: String (unique), email: String (index, unique), name: String, picture: String, roles: [String] default [], createdAt, updatedAt }\n- ApiKeyMapSchema { apiKey: String (unique, hashed at rest if desired), userId: ObjectId(User) (index), label: String, active: Boolean default true, createdAt }\n- AssetSchema { symbol: String (unique, index), name: String, kind: String enum['FX','CFD','Crypto','Index','Stock'], createdBy: ObjectId(User), createdAt }\n- EmotionalCheckSchema (embedded) { emotion: String required, bodySignals: [{ signal: String, intensity: Number [1..10] }], notes: String, createdAt }\n- PlanSchema { userId: ObjectId(User) index, title: String, status: String enum['open','emotional_check','entered','passed_over','cancelled','completed'] default 'open', emotionalChecks: [EmotionalCheckSchema], decisions: [String] default [], conversationIds: [ObjectId(ChatMessage)] default [], directionalBias: String optional, createdAt, updatedAt }\n  - Add allowed transitions map in code; enforce in service layer.\n- ChatMessageSchema { userId: ObjectId, planId: ObjectId(Plan) optional, role: String enum['system','user','assistant'], content: String, tokens: Number, createdAt }\n- TradeLogSchema { userId: ObjectId(User) index, ticket: String required, accountId: String required, symbol: String, action: String enum['BUY','SELL'], lots: Number, price: Number, sl: Number, tp: Number, openedAt: Date, closedAt: Date optional, pl: Number optional, screenshotLinks: [String] default [], createdAt }\n  - Unique compound index: { ticket: 1, accountId: 1 } unique:true to ensure idempotency (TL-104, ST-111, ST-404).\n- Screenshot events can be recorded via EventLogSchema if needed later; for now store links on TradeLog.\nIndexes:\n- PlanSchema: { userId:1, status:1, createdAt:-1 }\n- TradeLogSchema: { userId:1, openedAt:-1 }, { userId:1, symbol:1, openedAt:-1 }\n- Asset: { symbol:1 } unique\nMongoose setup (pseudo-code):\nconst mongoose = require('mongoose');\nawait mongoose.connect(process.env.MONGODB_URI, { dbName: 'tradingaid2' });\nValidation at schema-level kept minimal; use Joi at API boundary.\n",
+        "testStrategy": "- Unit: Use Jest or Vitest to validate schema defaults and index presence via mongoose.connection.db.listIndexes().\n- Verify unique index: insertOne twice with same {ticket,accountId} expects E11000 duplicate key.\n- Verify Plan default status and array defaults.\n- Validate that emotionalChecks subdocuments persist and clamp handled in service layer (covered in Task 6).",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Backend auth: Google OAuth, JWT issuance, protect/requireAdmin middleware",
+        "description": "Implement Google OAuth login flow, issue JWT on success, and create middleware for protected routes and admin-only actions.",
+        "details": "Tech: googleapis 166.x (OAuth2), jsonwebtoken 9.x, Express 4.18.x.\nEnv: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, FRONTEND_URL, JWT_SECRET, ADMIN_EMAILS (comma-separated), NODE_ENV.\nEndpoints (suggested):\n- GET /api/auth/google/url -> returns { url } built from OAuth2Client.generateAuthUrl({scope:['openid','email','profile'], access_type:'online', prompt:'consent', redirect_uri:`${BACKEND_URL}/api/auth/google/callback`})\n- GET /api/auth/google/callback?code=... -> server exchanges code for tokens; verify id_token; upsert User; sign JWT.\nAlternatively, if using Google One Tap, POST /api/auth/google with { idToken } and verify with OAuth2Client.getTokenInfo.\nJWT: payload { sub:user._id, email:user.email, roles:user.roles } signed with HS256, exp 12h.\nMiddleware:\n- authenticateJWT(req,res,next): parse Authorization: Bearer <token>; verify; attach req.user.\n- requireAdmin(req,res,next): check req.user.email in ADMIN_EMAILS or roles includes 'admin'. On fail 403.\n- attach to protected routes via router.use('/api/...', authenticateJWT) where needed (AU-102, AU-104).\nToken expiry handling: return 401 JSON {code:'AUTH_EXPIRED'} when token invalid/expired.\n",
+        "testStrategy": "- Integration with supertest + nock to mock Google token endpoint. Assert JWT returned and contains correct claims.\n- Middleware tests: access protected route w/valid token -> 200; invalid/missing -> 401; non-admin -> 403 for admin route.\n- Security: verify JWT signed with JWT_SECRET; algorithm restricted to HS256; audience/issuer optional (documented).",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Baseline validation, error handling, and env-gated logging",
+        "description": "Implement Joi validation for all public endpoints, standardized error responses, and environment-gated logging; add event logging hooks.",
+        "details": "Tech: Joi 18.x.\nValidation middleware (pseudo-code):\nfunction validate(schema){return (req,res,next)=>{const {error,value}=schema.validate({body:req.body,query:req.query,params:req.params},{abortEarly:false,stripUnknown:true}); if(error){return res.status(400).json({code:'VALIDATION_ERROR', message:'Validation failed', details:error.details.map(d=>({path:d.path, msg:d.message}))});} Object.assign(req, value); next();}};\nError handler:\napp.use((err,req,res,next)=>{ if(err.type==='entity.too.large') return res.status(413).json({code:'PAYLOAD_TOO_LARGE'}); const status=err.status||500; const body={code:status>=500?'SERVER_ERROR':'REQUEST_ERROR', message:err.message}; if(process.env.NODE_ENV!=='production') body.stack=err.stack; return res.status(status).json(body);});\nLogger utility:\nconst isDebug = process.env.DEBUG==='1' || process.env.NODE_ENV!=='production';\nconst log = { info:(...a)=>isDebug&&console.log('[INFO]',...a), warn:(...a)=>console.warn('[WARN]',...a), error:(...a)=>console.error('[ERROR]',...a) };\nEvent logging hooks (RO-103): expose logEvent(type,payload) that normalizes events: trade_ingested, screenshot_uploaded, emotional_check_submitted, sse_start, sse_end.\nApply validate() to every route built in subsequent tasks.\n",
+        "testStrategy": "- Unit: Feed invalid payloads to validate() and assert 400 + structured details.\n- Integration: Force thrown error in route to verify error handler returns 500 JSON with stack hidden in production.\n- Logging: Set DEBUG=1 and verify console output; with DEBUG unset in production simulate suppression of info logs (RO-102).",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "MT5 trade logs API: ingestion, query, daily context, screenshot upload",
+        "description": "Build secure ingestion of MT5 trades with idempotency, filter/sort/paginate queries, daily/yesterday context endpoint, and screenshot upload to Google Drive.",
+        "details": "Env: MT5_API_KEY (deprecated if using per-user keys), GOOGLE_DRIVE_FOLDER_ID, GOOGLE_SERVICE_ACCOUNT_KEY_PATH, FRONTEND_URL.\nSecurity model (TL-101):\n- EA sends POST /api/trade-logs with header x-api-key: <apiKey> (no JWT from EA). Backend maps apiKey -> user via ApiKeyMap.active==true. In production, if no valid ApiKeyMap, reject 401; in development, optionally allow DEFAULT_USER_ID when process.env.NODE_ENV!=='production' (dev fallback disabled in prod).\nRoutes:\n- POST /api/trade-logs (public for EA, but authenticated via apiKey header):\n  Joi: { ticket:string req, accountId:string req, symbol:string req, action:string in['BUY','SELL'], lots:number>0, price:number>0, sl:number, tp:number, openedAt:date req, closedAt:date optional, pl:number optional }\n  Flow (pseudo-code):\n    const key=req.headers['x-api-key']; const user=await ApiKeyMap.findOne({apiKey:key,active:true}); if(!user && process.env.NODE_ENV==='production') return 401; const userId=user?.userId||process.env.DEFAULT_USER_ID;\n    try { await TradeLog.create({ userId, ...body }); logEvent('trade_ingested',{userId,ticket:body.ticket}); return 201; } catch(e){ if(e.code===11000) return res.status(200).json({ idempotent:true }); throw e; }\n- GET /api/trade-logs (authenticated via JWT): filters: { symbol, action, from,to, sortBy in['openedAt','pl'], sortDir:'asc'|'desc', page:int>=1 default 1, pageSize:int<=100 default 25 }\n  Pagination meta: { page, pageSize, total, totalPages, hasNext, hasPrev } meeting ≤300ms p95 in dev (use indexes, projection).\n- GET /api/trade-logs/context (JWT): returns { today:{count, grossPL, symbols:[...]} , yesterday:{...} } computed by date ranges in user timezone (default UTC; extend later).\n- POST /api/trade-logs/:id/screenshot (JWT, multipart/form-data):\n  Use googleapis drive v3 with service account:\n  const auth = new google.auth.GoogleAuth({ keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH, scopes:['https://www.googleapis.com/auth/drive.file'] });\n  const drive = google.drive({version:'v3', auth});\n  const res = await drive.files.create({ requestBody:{ name:`${id}-${Date.now()}.png`, parents:[process.env.GOOGLE_DRIVE_FOLDER_ID], mimeType:'image/png' }, media:{ mimeType:'image/png', body:fileStream }});\n  await drive.permissions.create({fileId:res.data.id, requestBody:{role:'reader', type:'anyone'}});\n  const link = `https://drive.google.com/uc?id=${res.data.id}`;\n  await TradeLog.findByIdAndUpdate(id,{ $push:{ screenshotLinks: link }});\n  logEvent('screenshot_uploaded',{userId:req.user.sub, tradeLogId:id});\nNotes:\n- Ensure request size limits for uploads (e.g., 10MB).\n- Disable dev fallback in prod per TL-101.\n",
+        "testStrategy": "- Ingestion: supertest post twice with same {ticket,accountId} -> second responds 200 {idempotent:true}. Missing/invalid x-api-key -> 401 in prod; allowed with DEFAULT_USER_ID in dev.\n- Query: seed 200 logs; test filters combination, sort, and pagination metadata accuracy; measure p95 locally with autocannon to meet ≤300ms (dev/local) for 25/page.\n- Context: mock today/yesterday data; verify aggregation outputs.\n- Screenshot: use nock to stub Drive API; upload returns link; TradeLog updated; permissions created. Verify 4xx on missing file or oversize.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Configurations API and asset management",
+        "description": "Expose configuration payload (assets, timeframes, emotions, body signals) and authenticated asset management endpoint; provide safe dev fallbacks.",
+        "details": "Routes:\n- GET /api/config (public): returns static or DB-backed configuration such as { assets:[{symbol,name}], timeframes:{LTF:['M1','M5','M15'], MTF:['H1','H4'], HTF:['D1','W1']}, emotions:['calm','anxious','confident','fearful','frustrated'], bodySignals:['heart_rate','breathing','muscle_tension','sweat','restlessness'] }.\n- POST /api/assets (JWT): body { symbol:string uppercase, name:string, kind:enum }; creates new Asset owned by user (CF-103). Joi validate; on duplicate symbol return 409.\nFrontend dev fallback (CF-102): If /api/config fails, UI loads baked-in defaults (implemented in Task 9/10).\n",
+        "testStrategy": "- GET /api/config returns 200 with all keys; schema snapshot test.\n- POST /api/assets requires Authorization -> 401 without token; 201 on success; 409 on duplicate symbol.\n- Frontend: simulate API failure and assert default constants load (manual QA + unit tests in Task 9/10).",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Trade planning and emotional check API",
+        "description": "Implement plan creation, emotional check capture with sanitation, status transitions validation, delete with optimistic UI, and helper for today-trades context.",
+        "details": "Routes (JWT):\n- POST /api/plans -> creates Plan with status 'open'; returns plan for immediate display (TP-101, ST-201).\n  Joi: { title:string min 1 max 140 optional }\n- POST /api/plans/:id/emotional-check -> append sanitized check (TP-102, TP-103, ST-202).\n  Joi: { emotion:string req, bodySignals:[{ signal:string req, intensity:number req }], notes:string allow '' }\n  Sanitation (pseudo-code):\n    const signals = (body.bodySignals||[]).filter(s=>s.signal && Number.isFinite(s.intensity));\n    const clamped = signals.map(s=>({...s, intensity: Math.max(1, Math.min(10, Math.round(s.intensity)))}));\n    if(clamped.length===0) delete body.bodySignals;\n- POST /api/plans/:id/status -> change status with guard (TP-105).\n  Allowed transitions map:\n    { open:['emotional_check','cancelled','passed_over'], emotional_check:['entered','cancelled','passed_over'], entered:['completed','cancelled'], passed_over:[], cancelled:[], completed:[] }\n  Enforce: if !allowed[current].includes(next) -> 400.\n- DELETE /api/plans/:id -> delete plan (TP-106); return 204; UI does optimistic removal (handled in Task 9).\nHelpers:\n- getTodayTradesContext(userId): queries TradeLog for today and returns small summary string for Aria prompts (TP-104) to be used in Task 7.\n",
+        "testStrategy": "- Create plan -> appears in list (200), default status 'open'.\n- Emotional check -> intensity clamped to [1..10]; empty/invalid signals filtered; persisted.\n- Status transitions: test valid and invalid transitions.\n- Delete: 204 and subsequent GET by id -> 404. Event log for emotional_check_submitted emitted (RO-103).",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2,
+          3,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Aria SSE backend with DeepSeek Reasoner integration and graceful fallback",
+        "description": "Provide streaming chat responses over SSE with typing indicators, prompt context infusion, fallback to bundled non-stream reply on SSE failure, and performance monitoring.",
+        "details": "Tech: Express SSE, global fetch (Node 20), axios 1.13.x optional, DeepSeek Reasoner API.\nEnv: DEEPSEEK_API_KEY.\nEndpoint:\n- POST /api/aria/stream (JWT) with JSON { planId?:string, messages:[{role:'user'|'assistant'|'system', content:string}] }\n  Response: Content-Type: text/event-stream; cache-control: no-cache; connection: keep-alive.\nFlow (pseudo-code):\napp.post('/api/aria/stream', authenticateJWT, async (req,res)=>{\n  res.setHeader('Content-Type','text/event-stream'); res.flushHeaders?.();\n  const start=Date.now(); logEvent('sse_start',{userId:req.user.sub, planId:req.body.planId});\n  const todayCtx = await getTodayTradesContext(req.user.sub); // from Task 6\n  const systemPrompt = 'You are Aria... Use concise, practical coaching. Today trades: '+todayCtx;\n  const dsReq = { model:'deepseek-reasoner', stream:true, messages:[{role:'system',content:systemPrompt}, ...req.body.messages] };\n  const controller=new AbortController(); req.on('close',()=>controller.abort());\n  try{\n    const resp = await fetch('https://api.deepseek.com/chat/completions',{ method:'POST', headers:{ 'Authorization':`Bearer ${process.env.DEEPSEEK_API_KEY}`, 'Content-Type':'application/json' }, body:JSON.stringify(dsReq), signal:controller.signal });\n    if(!resp.ok) throw new Error('Upstream '+resp.status);\n    res.write('event: status\\ndata: thinking\\n\\n');\n    const reader = resp.body.getReader(); const decoder = new TextDecoder(); let first=false;\n    res.write('event: status\\ndata: typing\\n\\n');\n    while(true){ const {value,done}=await reader.read(); if(done) break; const chunk=decoder.decode(value); if(!first){ first=true; const ttfb=Date.now()-start; log.info('SSE first token',ttfb); logEvent('sse_first_token',{ttfb}); }\n      for(const line of chunk.split('\\n')){ if(line.startsWith('data: ')){ const payload=line.slice(6); res.write('event: token\\n'); res.write(`data: ${payload}\\n\\n`); } }\n    }\n    res.write('event: end\\ndata: done\\n\\n'); res.end(); logEvent('sse_end',{ok:true});\n  }catch(err){ log.warn('SSE failed, falling back',err.message);\n    // Fallback bundled (AC-103)\n    const dsFallback={ model:'deepseek-reasoner', stream:false, messages:[{role:'system',content:systemPrompt}, ...req.body.messages] };\n    try{ const f=await fetch('https://api.deepseek.com/chat/completions',{ method:'POST', headers:{Authorization:`Bearer ${process.env.DEEPSEEK_API_KEY}`, 'Content-Type':'application/json'}, body:JSON.stringify(dsFallback)});\n      const j=await f.json(); res.write('event: bundled\\n'); res.write(`data: ${JSON.stringify(j)}\\n\\n`); res.end(); logEvent('sse_end',{ok:true,fallback:true});\n    }catch(e){ res.write('event: error\\n'); res.write('data: Unable to get response\\n\\n'); res.end(); logEvent('sse_end',{ok:false}); }\n  }\n});\nPerformance target: compute p95 of time-to-first-token locally; record via simple in-memory array during dev; expose /metrics (dev-only) if desired (AC-104).\n",
+        "testStrategy": "- Mock DeepSeek API with nock streaming chunks; assert server emits 'status: thinking' then 'status: typing' then 'token' events; capture first-token latency and assert ≤1.5s in dev/local.\n- Force upstream failure to verify bundled fallback event is sent and HTTP does not return 500.\n- Abort test: client closes connection early -> server aborts upstream without unhandled rejection.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          3,
+          4,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Frontend auth, session management, and route guards (Vue 3 + Pinia + Router)",
+        "description": "Implement Google OAuth login UX, JWT storage/refresh logic, axios interceptors, and guarded routes with redirects to /login preserving local state.",
+        "details": "Tech: Vue 3.5.x, Vite 6.4.x, Pinia 3.x, Vue Router 4.6.x, axios 1.13.x.\nAuth store (Pinia pseudo-code):\nexport const useAuthStore = defineStore('auth',{ state:()=>({ token:null, user:null, unsavedDraft:null }), actions:{ setToken(t){ this.token=t; localStorage.setItem('jwt',t); }, load(){ this.token=localStorage.getItem('jwt'); }, logout(){ this.token=null; localStorage.removeItem('jwt'); } } });\nLogin flow:\n- Button: redirects to backend /api/auth/google/url, then to Google; callback returns to FRONTEND_URL with code -> frontend calls /api/auth/google/callback to retrieve JWT, or backend directly redirects with token hash in URL fragment (#token=...). Store token and decoded claims.\nRoute guards:\nrouter.beforeEach((to,from,next)=>{ const auth=useAuthStore(); auth.load(); if(to.meta.requiresAuth && !auth.token){ // preserve unsaved\n  if(from.name==='planning') auth.unsavedDraft = /* current draft from store */; return next({ path:'/login', query:{ redirect: to.fullPath } }); }\n  if(to.meta.adminOnly && !isAdminClaim(auth.token)) return next('/'); next(); });\nAxios interceptor:\naxios.interceptors.request.use(cfg=>{ const t=useAuthStore().token; if(t) cfg.headers.Authorization=`Bearer ${t}`; return cfg; });\naxios.interceptors.response.use(r=>r, err=>{ if(err.response?.status===401){ const auth=useAuthStore(); // retain unsaved plan state\n  return router.push({ path:'/login', query:{ redirect: router.currentRoute.value.fullPath } }); } return Promise.reject(err); });\nUI: /login page with clear messaging; guard labels on errors (AU-103, ST-102).\n",
+        "testStrategy": "- E2E (Cypress): visit /planning while logged out -> redirected to /login; after login returns to original route with state retained.\n- Unit: verify axios adds Authorization header; 401 triggers redirect without crashing; admin-only route blocks non-admin.\n- Manual: token expiration scenario by shortening exp and observing redirect behavior.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Planning UI and Aria chat integration (SSE, onboarding, auto-scroll)",
+        "description": "Build /planning route with plan creation, emotional check modal with sanitation, status controls, optimistic delete, and embedded chat panel streaming via SSE with indicators and fallback.",
+        "details": "Components:\n- PlanningView.vue: lists Current Plans (status!='completed'); create plan form; each plan opens DetailsModal.\n- EmotionalCheckModal.vue: fields emotion (select from config), bodySignals (multi with intensity), notes; sanitation mirrors backend; submit to /api/plans/:id/emotional-check; inner scrolling (min-height:0 on flex parents) per PRD.\n- PlanDetailsModal.vue: split-pane layout (left: Chat, right: plan details & status actions). Always-visible scrollbars when overflow.\n- Delete with optimistic UI: remove locally, call DELETE; on failure restore with toast.\nChat integration:\n- ChatPanel.vue: shows messages; on open, push instant local onboarding message (AC-102). Stream Aria via fetch streaming to /api/aria/stream.\nStreaming (browser pseudo-code):\nasync function streamChat(payload){ const res = await fetch('/api/aria/stream',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`}, body: JSON.stringify(payload) }); const reader = res.body.getReader(); const decoder = new TextDecoder(); let buffer=''; addStatus('thinking'); addStatus('typing'); let assistantMsg='';\n while(true){ const {value,done}=await reader.read(); if(done) break; buffer += decoder.decode(value,{stream:true}); const parts = buffer.split('\\n\\n'); buffer = parts.pop(); for(const part of parts){ const lines = part.split('\\n'); const evt = lines.find(l=>l.startsWith('event:'))?.slice(7).trim(); const data = lines.find(l=>l.startsWith('data:'))?.slice(6); if(evt==='token'){ const payload = JSON.parse(data); const delta = payload.choices?.[0]?.delta?.content || payload; assistantMsg += delta; updateAssistant(assistantMsg); autoScroll(); } else if(evt==='bundled'){ const j = JSON.parse(data); assistantMsg = j.choices?.[0]?.message?.content || ''; updateAssistant(assistantMsg); } }\n }\n}\nFallback handling: if fetch throws or stream fails, call /api/aria/stream again expecting 'bundled' event or dedicated /api/aria/bundled endpoint; render without 500 (AC-103).\nAuto-scroll: scroll container to bottom on new tokens; support natural auto-scroll behavior.\nPerformance display (dev): show TTFB measured from first chunk arrival.\n",
+        "testStrategy": "- Component tests (Vitest + Vue Testing Library): ensure onboarding message shown instantly; emotional modal clamps and filters before POST; optimistic delete restores on failure.\n- Streaming: mock server-sent events using ReadableStream; verify typing indicator then tokens appended; fallback path tested by forcing network error.\n- Accessibility: verify labels, focus management in modal, and visible scrollbars when overflow.",
+        "priority": "high",
+        "dependencies": [
+          5,
+          6,
+          7,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Logs and Journal History UI (filters, pagination, screenshots, details modal)",
+        "description": "Implement /logs for viewing ingested trades with filters/sort/pagination and screenshot upload; implement /history for completed plans with details modal and consistent labels.",
+        "details": "Logs page (/logs):\n- Table with columns: openedAt, symbol, action, lots, price, pl, screenshotLink(s).\n- Controls: filter by date range, symbol, action; sort by openedAt/pl; pagination 25/page with accurate metadata from backend; adhere to ≤300ms p95 in dev/local.\n- Screenshot upload: per-row upload button -> POST /api/trade-logs/:id/screenshot (multipart). On success, append link in row.\nHistory page (/history):\n- Title/labels use \"Journal History\" (JH-102). List completed plans with summaries from GET /api/plans?status=completed; open details modal to review plan, emotional checks timeline, and chat history references (JH-101).\n- Remove/redirect any legacy routes to this page.\nUI/UX:\n- Ensure split-pane modal layout for details matches Planning modal for consistency.\n- Always-visible scrollbars where content overflows.\nDev fallbacks: If /api/config fails, use baked-in defaults for emotions/signals/timeframes (CF-102).\n",
+        "testStrategy": "- Logs: mock backend to return 60 items; verify pagination controls reflect total/meta and combine filters correctly (ST-402).\n- Screenshot: mock Drive endpoint in dev; after upload, link appears; handle error states gracefully (ST-403).\n- History: ensure completed plans render summaries and details modal opens; labels verified; legacy routes 301/redirect to /history.\n- Performance: measure basic render timings and ensure pagination requests resolve quickly in dev.",
+        "priority": "medium",
+        "dependencies": [
+          4,
+          6,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-11-28T05:27:40.529Z",
+      "updated": "2025-11-28T05:27:40.529Z",
+      "description": "Tasks for master context"
+    }
+  }
+}
