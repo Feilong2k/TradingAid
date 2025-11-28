@@ -671,8 +671,28 @@ function calculateAnalysisGrades(analysisEntry) {
 
 // Create new analysis entry
 router.post('/:id/analysis-entries', authenticateToken, async (req, res) => {
+  dlog('BACKEND: Starting analysis entry creation', {
+    tradePlanId: req.params.id,
+    userId: req.user._id,
+    timeframe: req.body.timeframe,
+    hasScreenshots: req.body.screenshots?.length > 0
+  });
+
   try {
     const { timeframe, trend, choch, divergence, stochastics, timeCriteria, atrAnalysis, movingAverages, notes, screenshots } = req.body;
+    
+    dlog('BACKEND: Received analysis data:', {
+      timeframe,
+      trend,
+      choch,
+      divergence,
+      stochastics,
+      timeCriteria,
+      atrAnalysis,
+      movingAverages,
+      notes,
+      screenshotsCount: screenshots?.length || 0
+    });
     
     // Find the trade plan
     const tradePlan = await TradePlan.findOne({
@@ -681,13 +701,17 @@ router.post('/:id/analysis-entries', authenticateToken, async (req, res) => {
     });
     
     if (!tradePlan) {
+      dlog('BACKEND: Trade plan not found for user:', req.user._id);
       return res.status(404).json({ error: 'Trade plan not found' });
     }
+    
+    dlog('BACKEND: Found trade plan:', tradePlan._id);
     
     // Enforce HTF single-entry constraint
     if (timeframe === 'HTF') {
       const existingHTF = tradePlan.analysisEntries.find(entry => entry.timeframe === 'HTF');
       if (existingHTF) {
+        dlog('BACKEND: HTF analysis entry already exists for trade plan:', tradePlan._id);
         return res.status(400).json({ error: 'Only one HTF analysis entry allowed per trade plan' });
       }
     }
@@ -709,6 +733,8 @@ router.post('/:id/analysis-entries', authenticateToken, async (req, res) => {
     // Calculate grades and directional bias
     const { grades, totalGrade, directionalBias } = calculateAnalysisGrades(analysisEntry);
     
+    dlog('BACKEND: Calculated grades:', { grades, totalGrade, directionalBias });
+    
     // Add the analysis entry to the trade plan
     tradePlan.analysisEntries.push({
       ...analysisEntry,
@@ -722,9 +748,17 @@ router.post('/:id/analysis-entries', authenticateToken, async (req, res) => {
     // Return the newly created analysis entry
     const newEntry = tradePlan.analysisEntries[tradePlan.analysisEntries.length - 1];
     
+    dlog('BACKEND: Analysis entry created successfully:', {
+      entryId: newEntry._id,
+      timeframe: newEntry.timeframe,
+      totalGrade: newEntry.totalGrade,
+      directionalBias: newEntry.directionalBias
+    });
+    
     // Generate Aria technical assessment in background
     setTimeout(async () => {
       try {
+        dlog('BACKEND: Starting Aria technical assessment generation');
         const assessment = await aiService.generateTechnicalAssessment(
           req.user._id.toString(),
           analysisEntry,
@@ -741,18 +775,27 @@ router.post('/:id/analysis-entries', authenticateToken, async (req, res) => {
         };
         
         await tradePlan.save();
-        dlog('Aria technical assessment generated successfully for timeframe:', timeframe);
+        dlog('BACKEND: Aria technical assessment generated successfully for timeframe:', timeframe);
       } catch (assessmentError) {
-        console.error('Error generating Aria technical assessment:', assessmentError);
+        console.error('BACKEND: Error generating Aria technical assessment:', assessmentError);
         // Don't fail the request if assessment generation fails
-        dlog('Failed to generate Aria assessment, continuing without it');
+        dlog('BACKEND: Failed to generate Aria assessment, continuing without it');
       }
     }, 100);
     
     res.status(201).json(newEntry);
   } catch (error) {
-    console.error('Error creating analysis entry:', error);
-    res.status(500).json({ error: 'Failed to create analysis entry' });
+    console.error('BACKEND: Error creating analysis entry:', {
+      message: error.message,
+      stack: error.stack,
+      tradePlanId: req.params.id,
+      userId: req.user._id,
+      body: req.body
+    });
+    res.status(500).json({ 
+      error: 'Failed to create analysis entry',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

@@ -108,6 +108,31 @@ Support multiple analysis entries per plan (LTF/MTF/HTF) with one or more screen
 - `frontend/src/components/TradePlanDetailsModal.vue` - Added technical analysis sections, helper methods, and CSS styles
 - `tasks/TASK_9_SUBTASKS.md` - Updated to reflect completion of Subtask 9.4
 
+### Subtask 9.14 - Backend API Fixes and Data Persistence (Completed)
+**Critical Issues Fixed:**
+1. **Analysis Entry Submission Error**: Fixed "I encountered an error submitting your analysis" message
+2. **API URL Configuration**: Updated frontend to use proper API base URL from environment variables
+3. **Comprehensive Error Logging**: Added detailed logging to backend analysis entry endpoint
+4. **Enhanced Error Handling**: Improved frontend error messages with specific details
+
+**Technical Changes:**
+- **Backend Error Logging**: Added comprehensive debug logging to `POST /api/trade-plans/:id/analysis-entries` endpoint
+- **Frontend API URL**: Updated AnalysisModal to use `import.meta.env.VITE_API_BASE_URL` for proper API calls
+- **Enhanced Error Messages**: Frontend now displays specific error details instead of generic messages
+- **Request Logging**: Added console logging for analysis data submission and responses
+- **Error Response Handling**: Frontend now reads error response body for better debugging
+
+**Features Implemented:**
+- **Detailed Debug Logging**: Backend now logs analysis entry creation process with user IDs, trade plan IDs, and data details
+- **Environment-Aware API Calls**: Frontend properly handles both development and production API URLs
+- **Better Error Diagnostics**: Users see specific error messages with status codes and response details
+- **Data Persistence Verification**: Backend confirms successful analysis entry creation with detailed logging
+
+**Files Modified:**
+- `backend/src/routes/tradePlans.js` - Added comprehensive error logging and debugging to analysis entry endpoint
+- `frontend/src/components/AnalysisModal.vue` - Fixed API URL configuration and enhanced error handling
+- `docs/KNOWLEDGE_TRANSFER.md` - Updated to reflect API fixes completion
+
 ### Subtask 9.11 - AnalysisModal Bug Fixes and UI Improvements (Completed)
 **Issues Fixed:**
 1. **403 Forbidden Error**: Fixed authentication token storage key from 'token' to 'auth_token' in AnalysisModal

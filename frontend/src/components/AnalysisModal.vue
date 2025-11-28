@@ -529,8 +529,13 @@ export default {
           screenshots: validScreenshots
         }
         
+        console.log('Submitting analysis data:', analysisData)
+        
+        // Get API base URL from environment
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
+        
         // Submit to backend API
-        const response = await fetch(`/api/trade-plans/${props.tradePlanId}/analysis-entries`, {
+        const response = await fetch(`${apiBaseUrl}/api/trade-plans/${props.tradePlanId}/analysis-entries`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -540,10 +545,17 @@ export default {
         })
         
         if (!response.ok) {
-          throw new Error('Failed to submit analysis')
+          const errorText = await response.text()
+          console.error('API Error Response:', {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText
+          })
+          throw new Error(`Failed to submit analysis: ${response.status} ${response.statusText}`)
         }
         
         const result = await response.json()
+        console.log('Analysis submitted successfully:', result)
         
         // Emit event based on whether this is the last timeframe
         if (props.isLastTimeframe) {
@@ -558,7 +570,7 @@ export default {
         conversation.value.push({
           id: Date.now(),
           role: 'assistant',
-          content: "I encountered an error submitting your analysis. Please try again or contact support if the issue persists."
+          content: `I encountered an error submitting your analysis: ${error.message}. Please try again or contact support if the issue persists.`
         })
         await scrollToBottom()
       } finally {
@@ -1070,8 +1082,8 @@ ${totalGrade.value > 5 ? 'Consider long positions with proper risk management' :
 /* Navigation Buttons */
 .navigation-buttons {
   display: flex;
-  gap: 12px;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid #e5e7eb;
@@ -1091,15 +1103,32 @@ ${totalGrade.value > 5 ? 'Consider long positions with proper risk management' :
   background: #f3f4f6;
   color: #374151;
   border: 1px solid #d1d5db;
+  margin-right: auto;
 }
 
 .back-button:hover {
   background: #e5e7eb;
 }
 
+.aria-analysis-button {
+  background: #8b5cf6;
+  color: white;
+  margin: 0 auto;
+}
+
+.aria-analysis-button:hover:not(:disabled) {
+  background: #7c3aed;
+}
+
+.aria-analysis-button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
 .submit-button {
   background: #10b981;
   color: white;
+  margin-left: auto;
 }
 
 .submit-button:hover:not(:disabled) {
