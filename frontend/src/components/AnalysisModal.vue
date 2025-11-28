@@ -461,6 +461,99 @@ export default {
       }
     }
 
+    const streamChat = async (messageText) => {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
+      const url = `${apiBaseUrl}/api/trade-plans/${props.tradePlanId}/chat/stream`
+
+      const assistantMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: ''
+      }
+      conversation.value.push(assistantMessage)
+      await scrollToBottom()
+
+      isThinking.value = true
+      isTyping.value = false
+
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          },
+          body: JSON.stringify({ 
+            message: messageText,
+            emotionalState: {},
+            todayTrades: []
+          })
+        })
+
+        if (!resp.ok || !resp.body) {
+          throw new Error(`HTTP ${resp.status}: ${resp.statusText}`)
+        }
+
+        const reader = resp.body.getReader()
+        const decoder = new TextDecoder('utf-8')
+        let buffer = ''
+        let firstTokenReceived = false
+
+        while (true) {
+          const { value, done } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const frames = buffer.split('\n\n')
+          buffer = frames.pop() || ''
+
+          for (const frame of frames) {
+            const dataLine = frame.split('\n').find(l => l.startsWith('data:'))
+            if (!dataLine) continue
+            const payload = dataLine.slice('data:'.length).trim()
+
+            if (payload === '[DONE]') {
+              isThinking.value = false
+              isTyping.value = false
+              await scrollToBottom()
+              return
+            }
+
+            try {
+              const parsed = JSON.parse(payload)
+              const delta = parsed?.delta ?? ''
+              if (delta) {
+                if (!firstTokenReceived) {
+                  firstTokenReceived = true
+                  isThinking.value = false
+                  isTyping.value = true
+                }
+                assistantMessage.content += delta
+                await nextTick()
+                await scrollToBottom()
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+
+        isThinking.value = false
+        isTyping.value = false
+      } catch (err) {
+        isThinking.value = false
+        isTyping.value = false
+        console.error('Stream chat error:', err)
+        // Add error message to chat
+        conversation.value.push({
+          id: Date.now() + 2,
+          role: 'assistant',
+          content: "I encountered an error processing your message. Please try again or contact support if the issue persists."
+        })
+        await scrollToBottom()
+      }
+    }
+
     const sendUserMessage = async () => {
       if (!userMessage.value.trim()) return
 
@@ -475,36 +568,7 @@ export default {
       })
 
       await scrollToBottom()
-
-      // Simulate AI response (will be replaced with actual API call)
-      isThinking.value = true
-      setTimeout(() => {
-        isThinking.value = false
-        isTyping.value = true
-        
-        const assistantMessage = {
-          id: Date.now() + 1,
-          role: 'assistant',
-          content: ''
-        }
-        conversation.value.push(assistantMessage)
-
-        const response = "I can see you're working on your technical analysis. Let me know if you need any help interpreting the grading system or want to discuss your findings."
-        
-        // Simulate typing effect
-        let i = 0
-        const typeWriter = () => {
-          if (i < response.length) {
-            assistantMessage.content += response.charAt(i)
-            i++
-            setTimeout(typeWriter, 20)
-          } else {
-            isTyping.value = false
-            scrollToBottom()
-          }
-        }
-        typeWriter()
-      }, 1000)
+      await streamChat(message)
     }
 
     const submitAnalysis = async () => {
