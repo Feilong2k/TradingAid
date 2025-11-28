@@ -721,6 +721,34 @@ router.post('/:id/analysis-entries', authenticateToken, async (req, res) => {
     
     // Return the newly created analysis entry
     const newEntry = tradePlan.analysisEntries[tradePlan.analysisEntries.length - 1];
+    
+    // Generate Aria technical assessment in background
+    setTimeout(async () => {
+      try {
+        const assessment = await aiService.generateTechnicalAssessment(
+          req.user._id.toString(),
+          analysisEntry,
+          tradePlan
+        );
+        
+        // Update the analysis entry with Aria assessment
+        newEntry.technicalAssessment = {
+          text: assessment,
+          modelVersion: 'deepseek-reasoner',
+          promptVersion: 'technical-analysis-v1',
+          confidenceScore: 0.85,
+          assessmentTimestamp: new Date()
+        };
+        
+        await tradePlan.save();
+        dlog('Aria technical assessment generated successfully for timeframe:', timeframe);
+      } catch (assessmentError) {
+        console.error('Error generating Aria technical assessment:', assessmentError);
+        // Don't fail the request if assessment generation fails
+        dlog('Failed to generate Aria assessment, continuing without it');
+      }
+    }, 100);
+    
     res.status(201).json(newEntry);
   } catch (error) {
     console.error('Error creating analysis entry:', error);

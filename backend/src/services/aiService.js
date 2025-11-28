@@ -63,6 +63,135 @@ Keep it supportive and actionable, not overwhelming.
     return await this.callDeepseek(userId, prompt, 'deepseek-reasoner');
   }
 
+  // Generate technical assessment for analysis entries
+  async generateTechnicalAssessment(userId, analysisEntry, tradePlan) {
+    const {
+      timeframe,
+      trend,
+      choch,
+      divergence,
+      stochastics,
+      timeCriteria,
+      atrAnalysis,
+      movingAverages,
+      notes
+    } = analysisEntry;
+
+    // Calculate grades for context
+    const gradeValues = {
+      trend: {
+        up_trending_above_ma: 2,
+        up_consolidation: 1,
+        down_trending_below_ma: -2,
+        down_consolidation: -1,
+        unclear: 0
+      },
+      choch: {
+        no_change: 0,
+        up_trend_broken: -1,
+        down_trend_broken: 1,
+        up_confirmed_not_verified: 2,
+        down_confirmed_not_verified: -2,
+        up_verified_not_confirmed: 2,
+        down_verified_not_confirmed: -2,
+        up_confirmed_verified: 3,
+        down_confirmed_verified: -3
+      },
+      divergence: {
+        none: 0,
+        five_waves_up_divergence: -2,
+        five_waves_down_divergence: 2,
+        three_waves_up_divergence: -1,
+        three_waves_down_divergence: 1
+      },
+      stochastics: {
+        oversold: 1,
+        overbought: -1,
+        moving_up: 1,
+        moving_down: -1,
+        directionless: 0,
+        divergence_overbought: -1,
+        divergence_oversold: 1
+      },
+      timeCriteria: {
+        uptrend_consolidation_met: 1,
+        downtrend_consolidation_met: -1,
+        uptrend_time_not_over: 1,
+        downtrend_time_not_over: -1,
+        consolidation_not_met: 0,
+        trend_time_over: 0,
+        not_valid: 0
+      },
+      atrAnalysis: {
+        up_candle_high: 2,
+        down_candle_high: -2,
+        up_candle_medium: 1,
+        down_candle_medium: -1,
+        low: 0
+      },
+      movingAverages: {
+        crossing_up: 2,
+        fanning_up: 1,
+        crossing_down: -2,
+        fanning_down: -1,
+        unclear: 0
+      }
+    };
+
+    const totalGrade = Object.keys(gradeValues).reduce((sum, element) => {
+      return sum + (gradeValues[element][analysisEntry[element]] || 0);
+    }, 0);
+
+    const directionalBias = totalGrade > 5 ? 'Long Focus' : totalGrade < -5 ? 'Short Focus' : 'Unclear';
+
+    const prompt = `
+TECHNICAL ANALYSIS ASSESSMENT REQUEST:
+
+TRADE PLAN CONTEXT:
+- Asset: ${tradePlan.asset}
+- Direction: ${tradePlan.direction}
+- Timeframe: ${tradePlan.timeframe}
+- Analysis Timeframe: ${timeframe}
+
+TECHNICAL ANALYSIS DATA:
+1. Trend: ${trend} (Score: ${gradeValues.trend[trend] || 0})
+2. CHoCH: ${choch} (Score: ${gradeValues.choch[choch] || 0})
+3. Divergence: ${divergence} (Score: ${gradeValues.divergence[divergence] || 0})
+4. Stochastics: ${stochastics} (Score: ${gradeValues.stochastics[stochastics] || 0})
+5. Time Criteria: ${timeCriteria} (Score: ${gradeValues.timeCriteria[timeCriteria] || 0})
+6. ATR Analysis: ${atrAnalysis} (Score: ${gradeValues.atrAnalysis[atrAnalysis] || 0})
+7. Moving Averages: ${movingAverages} (Score: ${gradeValues.movingAverages[movingAverages] || 0})
+
+CALCULATED METRICS:
+- Total Grade: ${totalGrade}
+- Directional Bias: ${directionalBias}
+
+USER NOTES:
+${notes || 'No additional notes provided'}
+
+Please provide a structured technical assessment with the following sections:
+
+1. STRUCTURED BREAKDOWN (analyze each of the 7 elements):
+   - For each element, provide 1-2 sentences of commentary
+   - Highlight strengths and weaknesses in the analysis
+   - Note any inconsistencies or areas needing clarification
+
+2. FREE-FORM ANALYSIS (2-3 paragraphs):
+   - Overall technical picture assessment
+   - Market context and momentum analysis
+   - Key technical levels and patterns observed
+
+3. TRADE RECOMMENDATION (1 paragraph):
+   - Clear recommendation based on the analysis
+   - Risk assessment and confidence level
+   - Suggested next steps or additional analysis needed
+
+Maintain a professional, analytical tone while being supportive. Focus on objective technical analysis while acknowledging the user's work.
+`;
+
+    return await this.callDeepseek(userId, prompt, 'deepseek-reasoner');
+  }
+
   // Analyze chat message during emotional check conversation
   async analyzeChatMessage(userId, userMessage, emotionalState, conversationHistory = [], todayTrades = []) {
     // Format conversation history for context
@@ -182,6 +311,24 @@ CRITICAL: DO NOT ask about trading specifics, setups, or technical analysis. The
       }
       if (prompt && prompt.includes('EMOTIONAL CHECK CHAT')) {
         return "I hear you. Let's focus on your emotional state right now. What's the strongest feeling you notice, and how might you ease it with a simple breathing exercise or short break?";
+      }
+      if (prompt && prompt.includes('TECHNICAL ANALYSIS ASSESSMENT REQUEST')) {
+        return `TECHNICAL ASSESSMENT (Fallback Mode):
+
+STRUCTURED BREAKDOWN:
+- Trend: Your trend analysis shows ${prompt.includes('up_trending_above_ma') ? 'strong bullish momentum' : 'mixed signals'}. Consider confirming with volume analysis.
+- CHoCH: The change of character pattern indicates ${prompt.includes('up_confirmed_verified') ? 'confirmed bullish structure' : 'developing market structure'}.
+- Divergence: ${prompt.includes('divergence') ? 'Divergence patterns suggest potential reversal zones' : 'No significant divergence detected'}.
+- Stochastics: Momentum indicators show ${prompt.includes('oversold') ? 'potential oversold conditions' : 'neutral momentum'}.
+- Time Criteria: ${prompt.includes('time_not_over') ? 'Time criteria support continuation' : 'Time factors are neutral'}.
+- ATR Analysis: Volatility assessment indicates ${prompt.includes('high') ? 'elevated market volatility' : 'normal volatility conditions'}.
+- Moving Averages: ${prompt.includes('crossing_up') ? 'Bullish MA alignment' : 'Mixed MA signals'}.
+
+FREE-FORM ANALYSIS:
+Based on your technical analysis, the market shows a balanced technical picture. The calculated grade suggests ${prompt.includes('Long Focus') ? 'bullish bias' : prompt.includes('Short Focus') ? 'bearish bias' : 'neutral conditions'}. Consider waiting for additional confirmation from price action and volume before making trading decisions.
+
+TRADE RECOMMENDATION:
+Given the current technical assessment, maintain a cautious approach. Wait for clearer directional confirmation and consider smaller position sizing until stronger signals emerge. Monitor key support/resistance levels for breakout opportunities.`;
       }
       return "Let's begin with an emotional check-in. How are you feeling right now? Remember, emotional awareness comes before analysis.";
     } catch {
